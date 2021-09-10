@@ -1,0 +1,28 @@
+Change settings in parenthesis to match locations for development and production directiories and databases
+Do not change values already provided.  Do not check into source code
+
+[GLOBAL]
+PROJECT: State Check Conversion to CCAM
+
+[DEV]
+NETWORK_BASE_DIR = (location of Trust Fund prisoner folders on network share. Create proper OS path to Finance\Trust Fund\Case Files )
+DEV_DB_BASE_DIR = (location of development database)
+NETWORK_DB_BACKUP_DIR = (location of development database backups)
+DATABASE_SQLite =wiw_plra.sqlite
+DATABASE_NAME_PREFIX =wiw_plra
+CCAM_API =
+CCAM_USERNAME =
+CLIENT_CERT_PATH = (uscourts.pem certificate file location)
+
+[PROD]
+NETWORK_BASE_DIR = (location of Trust Fund prisoner folders on network share. Create proper OS path to Finance\Trust Fund\Case Files)
+NETWORK_DB_BASE_DIR = (location of production database. create proper OS path to Finance\SCCC Database)
+NETWORK_DB_BACKUP_DIR =(location of production database backups. create proper OS path to Finance\SCCC Database\backup)
+DATABASE_SQLite = wiw_plra.sqlite
+DATABASE_NAME_PREFIX = wiw_plra
+CCAM_API = https://asoapi2.ao.dcn/ccam/v1/Accounts
+CCAM_USERNAME = WIWCCA
+CLIENT_CERT_PATH = (uscourts.pem certificate file location)
+RECONCILIATION_FILE_PATH =(location for Excel file generated during JIFMS to database reconciliation)
+
+

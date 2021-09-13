@@ -90,5 +90,11 @@ fabric.properties
 
 # Database file
 *.db
-/SCCM/db/backup/
+/plra/db/backup/
+/plra/db/
 /SCCM/db/
+/SCCM/examples/
+/.env
+
+# Environment files
+*.env

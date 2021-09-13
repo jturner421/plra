@@ -8,6 +8,7 @@ import os
 import keyring
 import pandas as pd
 import requests
+from dotenv import load_dotenv
 
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
@@ -30,7 +31,7 @@ def convert_sheet_to_dataframe(sheet):
     df = pd.DataFrame(sheet.values)
     dframe = df[[1, 2, 7]]
     dframe.columns = ['DOC', 'Name', 'Amount']
-    dframe = pdfe.delete_header_row(dframe)
+    dframe = dframe.drop(0)
     return dframe
 
 
@@ -103,9 +104,10 @@ def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
 
 def main():
     # read config file
-    config_path = Path('/Users/jwt/PycharmProjects/SCCM/SCCM')
+    config_path = Path('/Users/jwt/PycharmProjects/plra/SCCM')
     config_file = config_path / 'config' / 'config.ini'
     configuration = config.initialize_config(str(config_file))
+    load_dotenv()
 
     # Initialize session variables contained in config.ini
     prod_vars = config.get_prod_vars(configuration, 'PROD')
@@ -116,7 +118,8 @@ def main():
     db_session = DbSession.global_init(db_file)
     ccam_username = prod_vars['CCAM_USERNAME']
     base_url = prod_vars['CCAM_API']
-    ccam_password = keyring.get_password("WIWCCA", ccam_username)
+    # ccam_password = keyring.get_password("WIWCCA", ccam_username)
+    ccam_password = os.getenv('CCAM_PASSWORD')
     session = requests.Session()
     session.auth = (ccam_username, ccam_password)
     cert_path = prod_vars['CLIENT_CERT_PATH']

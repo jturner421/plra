@@ -2,10 +2,13 @@
 Command line JIFMS case lookup. Uses API to retrieve case information and prints to screen.
 """
 from pathlib import Path
+import string
+import os
 
 import keyring
 import requests
-import string
+from dotenv import load_dotenv
+
 from SCCM.bin.ccam_lookup import get_ccam_account_information
 from SCCM.bin.convert_to_excel import format_case_num
 from SCCM.config import config
@@ -18,7 +21,9 @@ def main():
     prod_vars = config.get_prod_vars(configuration, 'PROD')
     ccam_username = prod_vars['CCAM_USERNAME']
     base_url = prod_vars['CCAM_API']
+    # ccam_password = keyring.get_password("WIWCCA", ccam_username)
     ccam_password = keyring.get_password("WIWCCA", ccam_username)
+    ccam_password = os.getenv('CCAM_PASSWORD')
     session = requests.Session()
     session.auth = (ccam_username, ccam_password)
     cert_path = prod_vars['CLIENT_CERT_PATH']

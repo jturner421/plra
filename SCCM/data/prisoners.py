@@ -33,4 +33,4 @@ class PrisonerFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = Prisoner
-        sqlalchemy_session = db_session
+        # sqlalchemy_session = db_session

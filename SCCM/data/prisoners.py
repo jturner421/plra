@@ -1,9 +1,11 @@
 import datetime
 import sqlalchemy as sa
 from sqlalchemy import orm
+import factory
+from sqlalchemy.orm import scoped_session, sessionmaker
+
 
 from SCCM.data.modelbase import SqlAlchemyBase
-
 
 
 # each table needs to be represented by a class
@@ -23,4 +25,12 @@ class Prisoner(SqlAlchemyBase):
         return '<Doc Number {}>'.format(self.doc_num)
 
 
+class PrisonerFactory(factory.alchemy.SQLAlchemyModelFactory):
+    doc_num = factory.Sequence(lambda n: n)
+    created_date = datetime.datetime.today()
+    updated_date = datetime.datetime.now()
+    judgment_name = factory.Faker('name')
 
+    class Meta:
+        model = Prisoner
+        sqlalchemy_session = db_session

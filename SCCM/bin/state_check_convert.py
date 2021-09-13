@@ -9,7 +9,7 @@ import keyring
 import pandas as pd
 import requests
 
-from SCCM.bin import convert_to_excel as cte, pdf_extract as pdfe, ccam_lookup as ccam, dataframe_cleanup as dc, \
+from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
 from SCCM.config import config
 from SCCM.data.case_balance import CaseBalance

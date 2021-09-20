@@ -5,10 +5,12 @@ from pathlib import Path
 import sqlite3
 import os
 
-import keyring
+# import keyring
 import pandas as pd
 import requests
 from dotenv import load_dotenv
+from sqlalchemy import select, update
+from sqlalchemy.exc import NoResultFound
 
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
@@ -18,8 +20,6 @@ from SCCM.data.case_filter import CaseFilter
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.db_session import DbSession
 from SCCM.data.prisoners import Prisoner
-
-db_session = ''
 
 
 def convert_sheet_to_dataframe(sheet):
@@ -49,7 +49,7 @@ def prod_db_backup(db_file, destination):
     db_orig.close()
 
 
-def prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name ):
+def prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name):
     print('An errror processing this check has occured. \n')
     db_orig = sqlite3.connect(db_file)
 
@@ -79,31 +79,59 @@ def prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name ):
 def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
                                   db_file, destination, db_backup_path, db_backup_file_name):
     try:
-        for c in p.new_cases_list:
+        for c in p.cases_list:
             print(f'Populating case balances for {c}')
-            prisoner.court_cases.append(CourtCase(prisoner_doc_num=p.doc_num, case_num=c))
+            prisoner.cases.append(CourtCase(prisoner_doc_num=p.doc_num, case_num=c))
 
-            formatted_case_number = cte.format_case_num(prisoner.court_cases[-1].case_num)
+            formatted_case_number = cte.format_case_num(prisoner.cases[-1].case_num)
             ccam_balance = ccam.get_ccam_account_information(formatted_case_number, session, base_url)
-            prisoner.court_cases[-1].acct_cd = ccam_balance['data'][0]['acct_cd']
-            prisoner.court_cases[-1].case_comment = 'ACTIVE'
+            prisoner.cases[-1].acct_cd = ccam_balance['data'][0]['acct_cd']
+            prisoner.cases[-1].case_comment = 'ACTIVE'
+            # TODO create case class with composition to prisoner
             ccam.sum_account_balances(ccam_balance, p)
             # populate balances for cases in person object
-            prisoner.court_cases[-1].case_balance.append(
-                CaseBalance(court_case_id=prisoner.court_cases[-1].id,
+            prisoner.cases[-1].case_balance.append(
+                CaseBalance(court_case_id=prisoner.cases[-1].id,
                             amount_assessed=p.ccam_balance["Total Owed"],
                             amount_collected=p.ccam_balance["Total Collected"],
                             amount_owed=p.ccam_balance["Total Outstanding"]))
             # db_session.add(prisoner.court_cases[-1])
-            db_session.commit()
+            # db_session.commit()
         p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)).all()
         return p, prisoner
     except TypeError:
-        prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name)
+        prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name)
         exit(1)
 
+
+def add_prisoner_to_db(network_base_dir, p):
+    print(f'{p.check_name} not found in database. Creating.... ')
+    # Get parameters, create new user, insert into DB and load balances
+    # search for name on network share
+    p.drop_suffix_from_name(dc.populate_suffix_list())
+    p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
+    p.plra_name = p.get_name_ratio()
+    p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
+    # get the existing cases
+
+    # insert the prisoner into the database
+    # p.create_prisoner(db_session, session, base_url)
+    # doc_num = input(f'Enter DOC Number for {p.plra_name}: ')
+    # prisoner_db = Prisoner(doc_num=int(p.doc_num), legal_name=p.check_name, judgment_name=p.check_name)
+    # db_session.add(prisoner_db)
+    # p.new_cases_list = p.cases_list
+    # p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner_db, session,
+    #                                             db_file, destination, db_backup_path, db_backup_file_name)
+    return p
+
+
+def get_existing_cases_from_network(p):
+    print(f'Getting existing cases for {p.plra_name}')
+    p.cases_list = p.get_prisoner_case_numbers(dc.populate_cases_filter_list())
+    return p
+
+
 def main():
-    # read config file
     config_path = Path('/Users/jwt/PycharmProjects/plra/SCCM')
     config_file = config_path / 'config' / 'config.ini'
     configuration = config.initialize_config(str(config_file))
@@ -126,9 +154,8 @@ def main():
     session.verify = cert_path
 
     # Initialize filter lists from database
-    suffix_list = dc.populate_suffix_list(db_session)
-    cases_filter_list = dc.populate_cases_filter_list(db_session)
-
+    # suffix_list = dc.populate_suffix_list(db_session)
+    # cases_filter_list = dc.populate_cases_filter_list(db_session)
     # Ask user to choose one or more files for processing
     filenames = gf.choose_files_for_import()
 
@@ -189,98 +216,83 @@ def main():
         for key, p in prisoner_list.items():
             # lookup name in internal DB
             try:
-                prisoner = db_session.query(Prisoner).get(int(p.doc_num))
+                # prisoner = db_session.query(Prisoner).get(int(p.doc_num))
+                stmt = select(Prisoner).filter_by(doc_num=int(p.doc_num))
+                prisoner = db_session.execute(stmt).scalar_one()
                 if prisoner:
                     db_session.add(prisoner)
                     # db_session.add(p)
+                    # else:
+                    #     # get active cases for payee
+                    #
+                    #     query = db_session.query(CaseFilter.filter_text).subquery()
+                    #     p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
+                    #         .filter(CourtCase.case_comment.notin_(query)).all()
+                    #     if not p.cases_list:
+                    #         p.drop_suffix_from_name(suffix_list)
+                    #         p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
+                    #         p.plra_name = p.get_name_ratio()
+                    #         p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
+                    #
+                    #         # get the cases from network share
+                    #         p.new_cases_list = p.get_prisoner_case_numbers(cases_filter_list)
+                    #         if not p.new_cases_list:
+                    #             p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
+                    #             p.ccam_balance = {'Total Owed': 0.00, 'Total Collected': 0.00, 'Total Outstanding': 0.00}
+                    #             p = ccam.check_for_overpayment(p)
+                    #             continue
 
-                if prisoner is None:
-                    print(f'{p.check_name} not found in database. Creating.... ')
-                    # Get parameters, create new user, insert into DB and load balances
-                    # search for name on network share
-                    p.drop_suffix_from_name(suffix_list)
-                    p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
-                    p.plra_name = p.get_name_ratio()
-                    p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
+                    # for each case, get a case balance from CCAM
 
-                    # get the existing cases
-                    print(f'Getting existing cases for {p.plra_name}')
-                    p.cases_list = p.get_prisoner_case_numbers(cases_filter_list)
-
-                    # insert the prisoner into the database
-                    # p.create_prisoner(db_session, session, base_url)
-                    doc_num = input(f'Enter DOC Number for {p.plra_name}: ')
-                    prisoner = Prisoner(doc_num=int(doc_num), legal_name=p.plra_name)
-                    db_session.add(prisoner)
-                    p.new_cases_list = p.cases_list
                     p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                                                db_file, destination, db_backup_path, db_backup_file_name)
+                                                                db_file, destination, db_backup_path,
+                                                                db_backup_file_name)
 
-                else:
-                    # get active cases for payee
-
-                    query = db_session.query(CaseFilter.filter_text).subquery()
+                    # reload case list
                     p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
                         .filter(CourtCase.case_comment.notin_(query)).all()
-                    if not p.cases_list:
-                        p.drop_suffix_from_name(suffix_list)
-                        p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
-                        p.plra_name = p.get_name_ratio()
-                        p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
+                    # db_session.add(p)
+                    # Update case account code or prisoner vendor code if needed
+                    # FIXME -Ths code currently does not update the prty codes
 
-                        # get the cases from network share
-                        p.new_cases_list = p.get_prisoner_case_numbers(cases_filter_list)
-                        if not p.new_cases_list:
-                            p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
-                            p.ccam_balance = {'Total Owed': 0.00, 'Total Collected': 0.00, 'Total Outstanding': 0.00}
-                            p = ccam.check_for_overpayment(p)
-                            continue
+                    p.current_case = p.cases_list.pop()
+                    p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
+                    # if not p.current_case.acct_cd:
+                    #     p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
+                    #     codes = ccam.get_ccam_account_information(p.formatted_case_num, session, base_url)
+                    #     if codes['data']:
+                    #         p.current_case.acct_cd = codes['data'][0]['acct_cd']
+                    #         # p.pty_cd = codes['data'][0]['prty_cd']
+                    #         # p.update_pty_acct_cd(result, s)
+                    #     else:
+                    #         pass
 
-                        # for each case, get a case balance from CCAM
+                    # Check for an overpayment
+                    p = ccam.check_for_overpayment(p)
+                    p.create_transaction(check_number, db_session)
+                    p.update_account_balance()
+                    # db_session.add()
+                    db_session.commit()
+                    if p.overpayment.exists:
+                        print(f" The DOC # for {p.check_name} is {p.doc_num}."
+                              f" An overpayment was made in the amount of $ {Decimal(p.overpayment.amount_overpaid).quantize(cents, ROUND_HALF_UP)}\n")
+                    else:
+                        print(f" The DOC # for {p.check_name} is {p.doc_num}."
+                              f" The amount paid is ${p.amount}\n")
+                    # TODO: add logic to check for next active open case
+            except NoResultFound:
+                p = add_prisoner_to_db(network_base_dir, p)
+                p = get_existing_cases_from_network(p)
 
-                        p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                                                    db_file, destination, db_backup_path, db_backup_file_name)
-
-                        # reload case list
-                        p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
-                            .filter(CourtCase.case_comment.notin_(query)).all()
-                        # db_session.add(p)
-                        # Update case account code or prisoner vendor code if needed
-                        # FIXME -Ths code currently does not update the prty codes
-
-                p.current_case = p.cases_list.pop()
-                p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
-                # if not p.current_case.acct_cd:
-                #     p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
-                #     codes = ccam.get_ccam_account_information(p.formatted_case_num, session, base_url)
-                #     if codes['data']:
-                #         p.current_case.acct_cd = codes['data'][0]['acct_cd']
-                #         # p.pty_cd = codes['data'][0]['prty_cd']
-                #         # p.update_pty_acct_cd(result, s)
-                #     else:
-                #         pass
-
-                # Check for an overpayment
-                p = ccam.check_for_overpayment(p)
-                p.create_transaction(check_number, db_session)
-                p.update_account_balance()
-                # db_session.add()
-                db_session.commit()
-                if p.overpayment.exists:
-                    print(f" The DOC # for {p.check_name} is {p.doc_num}."
-                          f" An overpayment was made in the amount of $ {Decimal(p.overpayment.amount_overpaid).quantize(cents, ROUND_HALF_UP)}\n")
-                else:
-                    print(f" The DOC # for {p.check_name} is {p.doc_num}."
-                          f" The amount paid is ${p.amount}\n")
-                # TODO: add logic to check for next active open case
             except IndexError:
                 p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
                 p.ccam_balance = {'Total Owed': 0.00, 'Total Collected': 0.00, 'Total Outstanding': 0.00}
                 overpayment_exists = ccam.check_for_overpayment(p)
                 p.overpayment = overpayment_exists
                 continue
+
             except FileNotFoundError:
-                prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name)
+                prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name)
                 exit(1)
 
     # Save excel file for upload to JIFMS

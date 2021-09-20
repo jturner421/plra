@@ -18,11 +18,11 @@ class DbSession:
         if DbSession.factory:
             return
 
-        # if not db_file or not db_file.strip():
-        #     raise Exception("You must specify a data file.")
+        if not db_file or not db_file.strip():
+            raise Exception("You must specify a data file.")
 
         # TODO: refactor to manage dev and prod connections
-        conn_str = 'sqlite:///' + str(db_file)
+        conn_str = 'sqlite+pysqlite:///' + str(db_file)
         print(f'Connecting to {conn_str}')
 
         # engine = sqlalchemy.create_engine(conn_str, echo=False)  # set echo=True for debugging

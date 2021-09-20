@@ -1,26 +1,30 @@
 from SCCM.data.case_filter import CaseFilter
 from SCCM.data.suffix import SuffixTable
+from SCCM.data.db_session import DbSession
+from sqlalchemy import select
 
 
-def populate_suffix_list(session):
+def populate_suffix_list():
     """
     Retrieves a list of popular suffix
 
     :return: A list of strings to check against names that contain a suffix
     """
-    s = session
-    suffix_query = s.query(SuffixTable.suffix_name).all()
+    s = DbSession.factory()
+    stmt = select(SuffixTable.suffix_name)
+    suffix_query = s.execute(stmt).all()
     suffix_list = [s[00] for s in suffix_query]
     return suffix_list
 
 
-def populate_cases_filter_list(session):
+def populate_cases_filter_list():
     """
     Retrieves a list of of strings from default DB
     :return: a list of strings used to filter against inactive case numbers
     """
-    s = session
-    filter_query = s.query(CaseFilter.filter_text).all()
+    s = DbSession.factory()
+    stmt = select(CaseFilter.filter_text)
+    filter_query = s.execute(stmt).all()
     case_filter = []
     for f in filter_query:
         case_filter.append(f[0])

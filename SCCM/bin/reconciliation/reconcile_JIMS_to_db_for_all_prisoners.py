@@ -11,7 +11,7 @@ import datetime
 from datetime import datetime, timedelta
 import warnings
 
-import keyring
+#import keyring
 import openpyxl
 import pandas as pd
 import requests
@@ -134,7 +134,7 @@ def get_ccam_balances(payments):
 
 def main():
     # config_path = Path.cwd()
-    config_path = Path('/Users/jwt/PycharmProjects/SCCM/SCCM')
+    config_path = Path('/Users/jwt/PycharmProjects/plra/SCCM')
     # config_file = config_path.parent.parent / 'config' / 'config.ini'
     config_file = config_path / 'config' / 'config.ini'
     configuration = config.initialize_config(str(config_file))
@@ -148,7 +148,7 @@ def main():
     base_url = prod_vars['CCAM_API']
     # reconciliation_file_path = prod_vars['RECONCILIATION_FILE_PATH']
 
-    reconciliation_file_path = '/Users/jwt/PycharmProjects/SCCM/SCCM/bin/reconciliation'
+    reconciliation_file_path = '/Users/jwt/PycharmProjects/plra/SCCM/bin/reconciliation'
     ccam_password = keyring.get_password("WIWCCA", ccam_username)
     session = requests.Session()
     session.auth = (ccam_username, ccam_password)

@@ -1,5 +1,5 @@
 # file that is needed for SqlAlchemy
-import sqlalchemy.ext.declarative as dec
+from sqlalchemy.orm import declarative_base
 
 # Creates singleton base class that "registers" DB classes
-SqlAlchemyBase = dec.declarative_base()
+SqlAlchemyBase = declarative_base()

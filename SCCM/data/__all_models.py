@@ -7,8 +7,6 @@ from SCCM.data.case_filter import CaseFilter
 # noinspection PyUnresolvedReferences
 from SCCM.data.court_cases import CourtCase
 # noinspection PyUnresolvedReferences
-from SCCM.data.case_balance import CaseBalance
-# noinspection PyUnresolvedReferences
 from SCCM.data.case_transaction import CaseTransaction
 # # noinspection PyUnresolvedReferences
 from SCCM.data.case_reconciliation import CaseReconciliation

@@ -41,7 +41,7 @@ def get_changed_cases(file):
     rownum = 2  # skip first row for header
     for row in sheet.values:
 
-        case_add = {'case_num': sheet.cell(row=rownum, column=5).value,
+        case_add = {'ecf_case_num': sheet.cell(row=rownum, column=5).value,
                     'case_id': sheet.cell(row=rownum, column=3).value,
                     'doc_num': sheet.cell(row=rownum, column=2).value,
                     'API_Amount_Assessed': sheet.cell(row=rownum, column=9).value,
@@ -82,7 +82,7 @@ def main():
             filter(CourtCase.id == CaseBalance.court_case_id).first()
         if result is not None:
         # add a reconciliation record for updated balances
-            print(f"Creating reconciliation record for case {case['case_num']}")
+            print(f"Creating reconciliation record for case {case['ecf_case_num']}")
             new_recon_record = CaseReconciliation(court_case_id=case_id,
                                                   previous_amount_assessed=result.CaseBalance.amount_assessed,
                                                   previous_amount_collected = result.CaseBalance.amount_collected,
@@ -94,7 +94,7 @@ def main():
             db_session.add(new_recon_record)
 
             # update case balance
-            print(f"Updating case balance for case {case['case_num']}")
+            print(f"Updating case balance for case {case['ecf_case_num']}")
             result.CaseBalance.amount_assessed = case['API_Amount_Assessed']
             result.CaseBalance.amount_collected = case['API_Amount_Collected']
             result.CaseBalance.amount_owed = case['API_Amount_Owed']

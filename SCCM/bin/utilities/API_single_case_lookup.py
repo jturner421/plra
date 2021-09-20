@@ -35,7 +35,7 @@ def main():
     balance = get_ccam_account_information(formatted_case_num, session, base_url)
     if len(balance['data']) >> 0:
         for k, v in enumerate(balance['data']):
-            print(f"Fund {v['debt_typ']}, Case #: {v['case_num']}, Account Code: {v['prty_cd']}, "
+            print(f"Fund {v['debt_typ']}, Case #: {v['ecf_case_num']}, Account Code: {v['prty_cd']}, "
                   f"Party Num: {v['prty_num']},  Name: {v['prty_nm']}, "
                   f" Amount Owed: {v['prnc_owed_am']}, Amount Collected: {v['prnc_clld_am']}, "
                   f"Amount Outstanding {v['totl_ostg_am']}")

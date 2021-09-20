@@ -13,12 +13,18 @@ class CourtCase(SqlAlchemyBase):
     prisoner_doc_num = sa.Column(sa.Integer, sa.ForeignKey('prisoners.doc_num'))
     created_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
     acct_cd = sa.Column(sa.String, nullable=True)
-    case_num = sa.Column(sa.String)
+    ecf_case_num = sa.Column(sa.String)
+    ccam_case_num = sa.Column(sa.String)
     case_comment = sa.Column(sa.String, nullable=True)
+    balance_created_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
+    balance_updated_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
+    amount_assessed = sa.Column(sa.NUMERIC, nullable=False)
+    amount_collected = sa.Column(sa.NUMERIC, nullable=False)
+    amount_owed = sa.Column(sa.NUMERIC, nullable=False)
     prisoner = relationship("Prisoner", back_populates='cases')
 
     def __repr__(self):
-        return '<Case Number {}>'.format(self.case_num)
+        return f'<Case Number {self.ecf_case_num} - Balance = {self.amount_owed}>'
 
 
 

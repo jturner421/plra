@@ -3,7 +3,6 @@ from decimal import *
 
 import pandas as pd
 
-from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
 
 
@@ -36,7 +35,7 @@ def insert_ccam_account_balances(p, db_session):
     """
     # get DB session
     s = db_session
-    result = s.query(CourtCase).filter(CourtCase.case_num == p.orig_case_number).first()
+    result = s.query(CourtCase).filter(CourtCase.ecf_case_num == p.orig_case_number).first()
     balances = [p.ccam_balance["Total Owed"], p.ccam_balance["Total Collected"], p.ccam_balance["Total Outstanding"]]
     result.case_balance.append(CaseBalance(court_case_id=result.id, amount_assessed=balances[0],
                                            amount_collected=balances[1], amount_owed=balances[2]))
@@ -61,7 +60,7 @@ def sum_account_balances(payments, p):
     p.pty_cd = df.iloc[0]['acct_cd']
     p.acct_cd = df.iloc[0]['prty_cd']
 
-    df = df.drop(['case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
+    df = df.drop(['ecf_case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
                   'prty_cd', 'last_updated'], axis=1)
     df.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
     df = df.sum()

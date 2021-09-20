@@ -114,7 +114,7 @@ def get_ccam_balances(payments):
         df = pd.DataFrame.from_dict(payments['data'])
         party_code = {'Party Code': df['prty_cd'][0]}
         df = df.drop(
-            ['case_num', 'case_titl', 'acct_cd', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ_lnum', 'debt_typ',
+            ['ecf_case_num', 'case_titl', 'acct_cd', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ_lnum', 'debt_typ',
              'last_updated', 'prty_cd'], axis=1)
         col_dict = {'prnc_owed': 'Total Owed', 'prnc_clld': 'Total Collected',
                     'totl_ostg': 'Total Outstanding'}
@@ -171,7 +171,7 @@ def main():
     reconciliation_file = create_output_file(reconciliation_file_path)
 
     for p in changed_cases:
-        db_case = p.CourtCase.case_num
+        db_case = p.CourtCase.ecf_case_num
         db_amount_assessed = p.CaseBalance.amount_assessed
         db_amount_collected = p.CaseBalance.amount_collected
         db_amount_owed = p.CaseBalance.amount_owed
@@ -186,7 +186,7 @@ def main():
         # get values from API
         formatted_case_num = cte.format_case_num(db_case.upper())
         try:
-            print(f'Retreiving CCAM account balances for {p.CourtCase.prisoner.legal_name} - {p.CourtCase.case_num} ')
+            print(f'Retreiving CCAM account balances for {p.CourtCase.prisoner.legal_name} - {p.CourtCase.ecf_case_num} ')
         except AttributeError:
             pass
         api_values = get_ccam_account_information(formatted_case_num, session, base_url)

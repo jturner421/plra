@@ -83,7 +83,7 @@ def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
             print(f'Populating case balances for {c}')
             prisoner.cases.append(CourtCase(prisoner_doc_num=p.doc_num, case_num=c))
 
-            formatted_case_number = cte.format_case_num(prisoner.cases[-1].case_num)
+            formatted_case_number = cte.format_case_num(prisoner.cases[-1].ecf_case_num)
             ccam_balance = ccam.get_ccam_account_information(formatted_case_number, session, base_url)
             prisoner.cases[-1].acct_cd = ccam_balance['data'][0]['acct_cd']
             prisoner.cases[-1].case_comment = 'ACTIVE'
@@ -132,7 +132,7 @@ def get_existing_cases_from_network(p):
 
 
 def main():
-    config_path = Path('/Users/jwt/PycharmProjects/plra/SCCM')
+    config_path = Path('/Users/jwt/PycharmProjects/plra_cli/SCCM')
     config_file = config_path / 'config' / 'config.ini'
     configuration = config.initialize_config(str(config_file))
     load_dotenv()
@@ -256,9 +256,9 @@ def main():
                     # FIXME -Ths code currently does not update the prty codes
 
                     p.current_case = p.cases_list.pop()
-                    p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
+                    p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
                     # if not p.current_case.acct_cd:
-                    #     p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
+                    #     p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
                     #     codes = ccam.get_ccam_account_information(p.formatted_case_num, session, base_url)
                     #     if codes['data']:
                     #         p.current_case.acct_cd = codes['data'][0]['acct_cd']

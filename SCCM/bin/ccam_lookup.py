@@ -61,7 +61,7 @@ def sum_account_balances(payments, case):
         # payment_lines[i] = payments['data'][i]
         payment_lines.append(payments['data'][i])
     df = pd.DataFrame(payment_lines)
-    # party_code = df.iloc[0]['acct_cd']
+    party_code = df.iloc[0]['acct_cd']
 
     df = df.drop(['case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
                   'prty_cd', 'last_updated'], axis=1)

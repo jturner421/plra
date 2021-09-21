@@ -1,6 +1,7 @@
 import os
 from collections import Counter
 from decimal import Decimal
+from typing import Optional
 
 import fuzz as fuzz
 from fuzzywuzzy import fuzz
@@ -12,7 +13,6 @@ from SCCM.data.case_balance import CaseBalance
 from SCCM.data.case_transaction import CaseTransaction
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.prisoners import Prisoner
-
 
 
 class Prisoners:
@@ -71,21 +71,21 @@ class Prisoners:
         Updates JIFMS account code for prisoner if not found
     """
 
-    def __init__(self, check_name, doc_num, amount):
+    def __init__(self, check_name, doc_num, amount_paid):
         self.check_name = check_name
         self.doc_num = doc_num
-        self.amount = amount
-        self.lookup_name = None
-        self.cases_list = None
-        self.orig_case_number = None
-        self.plra_name = None
-        self.search_dir = None
-        self.case_search_dir = None
-        self.formatted_case_num = None
-        self.ccam_balance = None
-        self.acct_cd = None
-        self.pty_cd = None
-        self.overpayment = None
+        self.amount_paid = amount_paid
+        # self.lookup_name = None
+        self.cases_list = []
+        # self.orig_case_number = None
+        # self.plra_name = None
+        # self.search_dir = None
+        # self.case_search_dir = None
+        # self.formatted_case_num = None
+        # self.ccam_balance = None
+        # self.acct_cd = None
+        self.pty_cd: Optional[str] = None
+        # self.overpayment = None
 
     def __repr__(self):
         return (f'{self.__class__.__name__}'
@@ -170,6 +170,7 @@ class Prisoners:
         self.cases_list = cases
 
     def _insert_ccam_account_balances(self, db_session, new_payee, i, session, base_url):
+        # TODO move to case balance class
         """db_session, new_payee, case_pos, session, base_url
         Inserts JIFMS CCAM balances for current payee and identified case
         :param db_session: SQLAlchemy session
@@ -231,14 +232,16 @@ class Prisoners:
         :param filter_list: list of cases for a prisoner
         :return: oldest active case
         """
+        from SCCM.bin.case import Case
         cases = [f.name for f in os.scandir(self.case_search_dir) if f.is_dir()]
-        self.cases_list = cases
         active_cases = cases[:]
         for case in cases:
             if any(s in case for s in filter_list):
                 active_cases.remove(case)
         active_cases.sort()
-        return active_cases
+        for c in active_cases:
+            self.cases_list.append(Case(c, 'ACTIVE'))
+        # return active_cases
 
     def _format_name(self):
         # TODO - Need to finish this for Excel Output
@@ -272,6 +275,7 @@ class Prisoners:
         :param result: Case information for selected prisoner
         :param db_session: SQLAlchemy session
         """
+
         print(f'Updating case balances for {self.check_name}')
 
         self.current_case.case_balance[0].amount_owed = self.current_case.case_balance[0].amount_owed - self.amount
@@ -282,7 +286,8 @@ class Prisoners:
             self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_assessed
             return
 
-        self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_collected + self.amount
+        self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[
+                                                                 0].amount_collected + self.amount
         if self.current_case.case_balance[0].amount_collected > self.current_case.case_balance[0].amount_assessed:
             self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_assessed
 

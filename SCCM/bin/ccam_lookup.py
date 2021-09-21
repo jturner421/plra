@@ -6,21 +6,22 @@ import pandas as pd
 from SCCM.data.court_cases import CourtCase
 
 
-def get_ccam_account_information(case_num, session, base_url):
+def get_ccam_account_information(case, session, base_url):
     """
     Retrieves JIFMS CCAM information for case via API call
-    :param case_num: formatted payee case number e.g. DWIW312CV000234-001
+    :param case: case object
     :param session: Requests session object
     :param base_url: base API url
     :return: dictionary of account balances for identified case
     """
     try:
-        case_string_split = str.split(case_num, '-')
-        case = f'{str.upper(case_string_split[0])}-{case_string_split[1]}'
-        print(f'Getting case balances from JIFMS for {case}\n')
+        # case_string_split = str.split(case.formatted_case_num, '-')
+        # case = f'{str.upper(case_string_split[0])}-{case_string_split[1]}'
+        print(f'Getting case balances from JIFMS for {case.case_number}\n')
         response = session.get(
             base_url,
-            params={'caseNumberList': case},
+            params={'caseNumberList': case.formatted_case_num},
+
         )
         return response.json()
     except TypeError as e:
@@ -43,11 +44,11 @@ def insert_ccam_account_balances(p, db_session):
     s.close()
 
 
-def sum_account_balances(payments, p):
+def sum_account_balances(payments, case):
     """
     Totals CCAM payment lines and updates prison object with payment information as a Python List
     :param payments: List of individual payment lines for a case
-    :param p: Prison object
+    :param case: case object
     :return: None
     """
 
@@ -57,16 +58,14 @@ def sum_account_balances(payments, p):
         # payment_lines[i] = payments['data'][i]
         payment_lines.append(payments['data'][i])
     df = pd.DataFrame(payment_lines)
-    p.pty_cd = df.iloc[0]['acct_cd']
-    p.acct_cd = df.iloc[0]['prty_cd']
+    party_code = df.iloc[0]['acct_cd']
 
-    df = df.drop(['ecf_case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
+    df = df.drop(['case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
                   'prty_cd', 'last_updated'], axis=1)
     df.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
     df = df.sum()
     ccam_account_balance = pd.Series.to_dict(df)
-    p.ccam_balance = ccam_account_balance
-    return p
+    return ccam_account_balance, party_code
 
 
 OverPaymentInfo = collections.namedtuple('OverPaymentInfo', 'exists, amount_overpaid')

@@ -240,7 +240,7 @@ class Prisoners:
                 active_cases.remove(case)
         active_cases.sort()
         for c in active_cases:
-            self.cases_list.append(Case(c, 'ACTIVE'))
+            self.cases_list.append(Case(c, 'ACTIVE', overpayment=False))
         # return active_cases
 
     def _format_name(self):

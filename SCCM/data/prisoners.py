@@ -22,6 +22,7 @@ class Prisoner(SqlAlchemyBase):
     vendor_code = sa.Column(sa.String, nullable=True)
     cases = relationship("CourtCase", back_populates='prisoner')
     aliases = relationship('Alias', back_populates='prisoner_name')
+
     def __repr__(self):
         return '<Doc Number {}>'.format(self.doc_num)
 

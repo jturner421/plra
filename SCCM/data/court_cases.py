@@ -27,4 +27,3 @@ class CourtCase(SqlAlchemyBase):
         return f'<Case Number {self.ecf_case_num} - Balance = {self.amount_owed}>'
 
 
-

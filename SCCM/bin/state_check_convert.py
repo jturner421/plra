@@ -22,6 +22,7 @@ from SCCM.data.db_session import DbSession
 from SCCM.data.prisoners import Prisoner
 from SCCM.bin.case import Case
 from SCCM.bin.balance import Balance
+import SCCM.bin.payment_strategy as payment
 
 
 def convert_sheet_to_dataframe(sheet):
@@ -237,10 +238,39 @@ def main():
                     ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
                     case.balance.add_ccam_balances(ccam_summary_balance)
             p.pty_cd = party_code
+            db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
+                                    vendor_code=p.pty_cd))
             # Process Payment
             number_of_cases_for_prisoner = len(p.cases_list)
-            if
-            fifo_case = p.cases_list.pop(0)
+            all_payments_applied = False
+            while not all_payments_applied:
+                if number_of_cases_for_prisoner == 0:
+                    context = payment.Context(payment.OverPaymentProcess())
+                    all_payments_applied = True
+
+                elif number_of_cases_for_prisoner > 1:
+                    fifo_case = p.cases_list.pop(0)
+                    context = payment.Context(payment.MultipleCasePaymentProcess())
+                    context.process_payment(fifo_case, float(p.amount_paid))
+
+                    if fifo_case.overpayment:
+                        fifo_case.status = 'PAID'
+                        overpayment = fifo_case.balance.mark_paid()
+                        db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                        number_of_cases_for_prisoner -= 1
+                        # context = payment.Context(payment.SingleCasePaymentProcess)
+                        # context.process_payment(p.cases_list.pop(), float(overpayment))
+                        #
+                    else:
+                        db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                        all_payments_applied = True
+
+
+
+                else:
+                    context = payment.Context(payment.SingleCasePaymentProcess)
+                    context.process_payment(p.cases_list.pop(), float(p.amount_paid))
+
             p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
             # if not p.current_case.acct_cd:
             #     p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
@@ -265,9 +295,6 @@ def main():
                 print(f" The DOC # for {p.check_name} is {p.doc_num}."
                       f" The amount paid is ${p.amount}\n")
 
-
-
-
             # except IndexError:
             #     p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
             #     p.ccam_balance = {'Total Owed': 0.00, 'Total Collected': 0.00, 'Total Outstanding': 0.00}
@@ -279,7 +306,6 @@ def main():
             #     prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name)
             #     exit(1)
 
-
             # # populate balances for cases in person object
             # prisoner.cases[-1].case_balance.append(
             #     CaseBalance(court_case_id=prisoner.cases[-1].id,
@@ -287,7 +313,6 @@ def main():
             #                 amount_collected=p.ccam_balance["Total Collected"],
             #                 amount_owed=p.ccam_balance["Total Outstanding"]))
             if prisoner:
-
                 # db_session.add(p)
                 # else:
                 #     # get active cases for payee
@@ -322,10 +347,7 @@ def main():
                 # Update case account code or prisoner vendor code if needed
                 # FIXME -Ths code currently does not update the prty codes
 
-
                 # TODO: add logic to check for next active open case
-
-
 
     # Save excel file for upload to JIFMS
 

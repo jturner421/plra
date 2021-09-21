@@ -231,50 +231,45 @@ def main():
                 # retrieve cases and CCAM balances
                 p = add_prisoner_to_db(network_base_dir, p)
                 p = get_existing_cases_from_network(p)
-                for case in p.cases_list:
-                    case.formatted_case_num = cte.format_case_num(case.case_number)
-                    case.balance = Balance()
-                    ccam_balance = ccam.get_ccam_account_information(case, session, base_url)
-                    case.acct_cd = ccam_balance['data'][0]['acct_cd']
-                    ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
-                    case.balance.add_ccam_balances(ccam_summary_balance)
-            p.pty_cd = party_code
+                cases_to_skip = []
+                for i, case in enumerate(p.cases_list):
+                    try:
+                        case.formatted_case_num = cte.format_case_num(case.case_number)
+                        case.balance = Balance()
+                        ccam_balance = ccam.get_ccam_account_information(case, session, base_url)
+                        case.acct_cd = ccam_balance['data'][0]['acct_cd']
+                        ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
+                        case.balance.add_ccam_balances(ccam_summary_balance)
+                    except IndexError:
+                        if not ccam_balance['data']:
+                            cases_to_skip.append(case)
+                            pass
+                if len(cases_to_skip) > 0:
+                    for case in cases_to_skip:
+                        if case in p.cases_list:
+                            p.cases_list.remove(case)
+                else:
+                    p.pty_cd = party_code
+
+
             # db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
             #                         vendor_code=p.pty_cd))
 
             # Process Payments and find overpayments
             number_of_cases_for_prisoner = len(p.cases_list)
-            processed_cases = []
-            all_payments_applied = False
-            while not all_payments_applied:
-                if number_of_cases_for_prisoner == 0:
-                    all_payments_applied = True
+            if number_of_cases_for_prisoner == 0:
+                context = payment.Context(payment.OverPaymentProcess())
+                p = context.process_payment(p, int(check_number))
 
-                elif number_of_cases_for_prisoner > 1:
-                    fifo_case = p.cases_list.pop(0)
-                    context = payment.Context(payment.MultipleCasePaymentProcess())
-                    context.process_payment(fifo_case, float(p.amount_paid))
-                    if fifo_case.overpayment:
-                        fifo_case.status = 'PAID'
-                        overpayment = fifo_case.balance.mark_paid()
-                        fifo_case.transaction = Transaction(check_number, float(p.amount_paid) - overpayment)
-                        p.amount_paid = overpayment
-                        # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
-                        processed_cases.append(fifo_case)
-                        number_of_cases_for_prisoner -= 1
-                    else:
-                        fifo_case.transaction = Transaction(check_number, p.amount_paid)
-                        processed_cases.append(fifo_case)
-                        # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
-                        all_payments_applied = True
+            elif number_of_cases_for_prisoner > 1:
+                context = payment.Context(payment.MultipleCasePaymentProcess())
+                p = context.process_payment(p, int(check_number))
 
+            else:
+                context = payment.Context(payment.SingleCasePaymentProcess())
+                p = context.process_payment(p, int(check_number))
 
-
-                else:
-                    context = payment.Context(payment.SingleCasePaymentProcess)
-                    context.process_payment(p.cases_list.pop(), float(p.amount_paid))
-
-            p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
+            # p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
             # if not p.current_case.acct_cd:
             #     p.formatted_case_num = cte.format_case_num(p.current_case.ecf_case_num)
             #     codes = ccam.get_ccam_account_information(p.formatted_case_num, session, base_url)
@@ -285,18 +280,18 @@ def main():
             #     else:
             #         pass
 
-            # Check for an overpayment
-            p = ccam.check_for_overpayment(p)
-            p.create_transaction(check_number, db_session)
-            p.update_account_balance()
-            # db_session.add()
-            db_session.commit()
-            if p.overpayment.exists:
-                print(f" The DOC # for {p.check_name} is {p.doc_num}."
-                      f" An overpayment was made in the amount of $ {Decimal(p.overpayment.amount_overpaid).quantize(cents, ROUND_HALF_UP)}\n")
-            else:
-                print(f" The DOC # for {p.check_name} is {p.doc_num}."
-                      f" The amount paid is ${p.amount}\n")
+            # # Check for an overpayment
+            # p = ccam.check_for_overpayment(p)
+            # p.create_transaction(check_number, db_session)
+            # p.update_account_balance()
+            # # db_session.add()
+            # db_session.commit()
+            # if p.overpayment.exists:
+            #     print(f" The DOC # for {p.check_name} is {p.doc_num}."
+            #           f" An overpayment was made in the amount of $ {Decimal(p.overpayment.amount_overpaid).quantize(cents, ROUND_HALF_UP)}\n")
+            # else:
+            #     print(f" The DOC # for {p.check_name} is {p.doc_num}."
+            #           f" The amount paid is ${p.amount}\n")
 
             # except IndexError:
             #     p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
@@ -315,7 +310,7 @@ def main():
             #                 amount_assessed=p.ccam_balance["Total Owed"],
             #                 amount_collected=p.ccam_balance["Total Collected"],
             #                 amount_owed=p.ccam_balance["Total Outstanding"]))
-            if prisoner:
+            # if prisoner:
                 # db_session.add(p)
                 # else:
                 #     # get active cases for payee
@@ -339,13 +334,13 @@ def main():
 
                 # for each case, get a case balance from CCAM
 
-                p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                                            db_file, destination, db_backup_path,
-                                                            db_backup_file_name)
-
-                # reload case list
-                p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
-                    .filter(CourtCase.case_comment.notin_(query)).all()
+                # p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
+                #                                             db_file, destination, db_backup_path,
+                #                                             db_backup_file_name)
+                #
+                # # reload case list
+                # p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
+                #     .filter(CourtCase.case_comment.notin_(query)).all()
                 # db_session.add(p)
                 # Update case account code or prisoner vendor code if needed
                 # FIXME -Ths code currently does not update the prty codes
@@ -353,8 +348,12 @@ def main():
                 # TODO: add logic to check for next active open case
 
     # Save excel file for upload to JIFMS
-
-    cte.write_rows_to_output_file(excel_file, prisoner_list, deposit_num, check_date)
+    payments = []
+    for key, p in prisoner_list.items():
+        for case in p.cases_list:
+            if case.transaction:
+                payments.append({'prisoner': p, 'case': case})
+    cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
 
 
 if __name__ == '__main__':

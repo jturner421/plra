@@ -185,43 +185,43 @@ def write_rows_to_output_file(file, payee_list, deposit_num, effective_date):
     wb = openpyxl.load_workbook(file)
     sheet = wb.get_sheet_by_name('PLRA')
     rownum = 2  # skip first row for header
-    for key, p in payee_list.items():
+    for p in payee_list:
         # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
         # checks for the same day
         sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
-        sheet.cell(row=rownum, column=2).value = int(p.doc_num)
+        sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
 
         # Check length of name to fit within CCAM batch upload constraints
         try:
-            if len(p.check_name) <= 20:
-                sheet.cell(row=rownum, column=3).value = p.check_name
+            if len(p['prisoner'].check_name) <= 20:
+                sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
             else:
-                shortened_name = get_shortened_name(p.check_name)
+                shortened_name = get_shortened_name(p['prisoner'].check_name)
                 sheet.cell(row=rownum, column=3).value = shortened_name
         except TypeError as error:
             print(f'{p.check_name} threw {error}')
 
         try:
             sheet.cell(row=rownum, column=4).value = effective_date
-            sheet.cell(row=rownum, column=5).value = Decimal(p.amount)
+            sheet.cell(row=rownum, column=5).value = Decimal(p['case'].transaction.amount_paid)
             sheet.cell(row=rownum, column=6).value = deposit_num
-            sheet.cell(row=rownum, column=7).value = str.upper(p.formatted_case_num)
-            sheet.cell(row=rownum, column=8).value = p.current_case.case_balance[0].amount_assessed
-            sheet.cell(row=rownum, column=9).value = p.current_case.case_balance[0].amount_collected
-            sheet.cell(row=rownum, column=10).value = p.current_case.case_balance[0].amount_owed
+            sheet.cell(row=rownum, column=7).value = str.upper(p['case'].formatted_case_num)
+            sheet.cell(row=rownum, column=8).value = p['case'].balance.amount_assessed
+            sheet.cell(row=rownum, column=9).value = p['case'].balance.amount_collected
+            sheet.cell(row=rownum, column=10).value = p['case'].balance.amount_owed
         except AttributeError:
             sheet.cell(row=rownum, column=4).value = effective_date
-            sheet.cell(row=rownum, column=5).value = Decimal(p.amount)
+            sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].amount)
             sheet.cell(row=rownum, column=6).value = deposit_num
-            sheet.cell(row=rownum, column=7).value = str.upper(p.formatted_case_num)
+            sheet.cell(row=rownum, column=7).value = str.upper(p['case'].formatted_case_num)
             sheet.cell(row=rownum, column=8).value = 0
             sheet.cell(row=rownum, column=9).value = 0
             sheet.cell(row=rownum, column=10).value = 0
 
-        try:
-            sheet.cell(row=rownum, column=11).value = p.overpayment.amount_overpaid
-        except AttributeError as error:
-            print(f'{p.check_name} threw {error}')
+        # try:
+        #     sheet.cell(row=rownum, column=11).value = p.overpayment.amount_overpaid
+        # except AttributeError as error:
+        #     print(f'{p.check_name} threw {error}')
         for c in range(1, 9):
             if c not in [5, 8, 9, 10]:
                 sheet.cell(row=rownum, column=c).style = 'data'

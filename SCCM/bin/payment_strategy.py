@@ -2,6 +2,11 @@ from __future__ import annotations
 from typing import List
 from abc import ABC, abstractmethod
 from SCCM.bin.case import Case
+from SCCM.bin.transaction import Transaction
+from SCCM.bin.prisoners import Prisoners
+from decimal import Decimal, ROUND_HALF_UP
+
+cents = Decimal('0.01')
 
 
 class Context:
@@ -35,9 +40,8 @@ class Context:
 
         self._strategy = strategy
 
-    def process_payment(self, case, amount_paid) -> None:
-        result = self._strategy.process_payment(case, amount_paid)
-        pass
+    def process_payment(self, p: Prisoners, check_number: int) -> None:
+        result = self._strategy.process_payment(p, check_number)
 
 
 class Strategy(ABC):
@@ -50,25 +54,66 @@ class Strategy(ABC):
     """
 
     @abstractmethod
-    def process_payment(self, case: Case, amount_paid: float):
+    def process_payment(self, p: Prisoners, check_number: int):
         pass
 
 
 class SingleCasePaymentProcess(Strategy):
-    def process_payment(self, case: Case, amount_paid: float) -> Case:
-        pass
+    def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
+        case = p.cases_list.pop(0)
+        case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
+                                        + p.amount_paid
+        case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
+                                   - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
+        if case.balance.amount_owed < 0:
+            case.overpayment = True
+        if case.overpayment:
+            case.status = 'PAID'
+            overpayment = case.balance.mark_paid()
+            case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
+                                           quantize(cents, ROUND_HALF_UP))
+            p.amount_paid = overpayment
+            # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+            p.cases_list.append(case)
+        else:
+            case.transaction = Transaction(check_number, p.amount_paid)
+            p.cases_list.append(case)
+        return p
 
 
 class MultipleCasePaymentProcess(Strategy):
-    def process_payment(self, case: Case, amount_paid: float) -> Case:
+    def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
+        number_of_cases_for_prisoner = len(p.cases_list)
+        processed_cases = []
+        all_payments_applied = False
+        while not all_payments_applied and number_of_cases_for_prisoner > 0:
+            case = p.cases_list.pop(0)
+            case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
+                                            + p.amount_paid
+            case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
+                                       - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
+            if case.balance.amount_owed < 0:
+                case.overpayment = True
+            if case.overpayment:
+                case.status = 'PAID'
+                overpayment = case.balance.mark_paid()
+                case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
+                                               quantize(cents, ROUND_HALF_UP))
+                p.amount_paid = overpayment
+                # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                processed_cases.append(case)
+                number_of_cases_for_prisoner -= 1
+            else:
+                case.transaction = Transaction(check_number, p.amount_paid)
+                processed_cases.append(case)
+                # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                all_payments_applied = True
 
-        case.balance.amount_collected = case.balance.amount_collected + amount_paid
-        case.balance.amount_owed = case.balance.amount_assessed - case.balance.amount_collected
-        if case.balance.amount_owed < 0:
-            case.overpayment = True
-        return case
+        for case in processed_cases:
+            p.cases_list.append(case)
+        return p
 
 
 class OverPaymentProcess(Strategy):
-    def process_payment(self, case: Case,amount_paid: float) -> Case:
+    def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
         pass

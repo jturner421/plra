@@ -9,6 +9,7 @@ from fuzzywuzzy import process
 
 from SCCM.data.court_cases import CourtCase
 from SCCM.bin.balance import Balance
+from SCCM.bin.transaction import Transaction
 from SCCM.data.db_session import DbSession
 
 cents = Decimal('0.01')
@@ -24,6 +25,7 @@ class Case:
     status: str
     overpayment: bool
     balance: Optional[Balance] = None
+    transaction: Optional[Transaction] = None
     case_search_dir: Optional[str] = None
     formatted_case_num: Optional[str] = None
     acct_cd: Optional[str] = None

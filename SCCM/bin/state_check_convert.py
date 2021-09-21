@@ -22,6 +22,7 @@ from SCCM.data.db_session import DbSession
 from SCCM.data.prisoners import Prisoner
 from SCCM.bin.case import Case
 from SCCM.bin.balance import Balance
+from SCCM.bin.transaction import Transaction
 import SCCM.bin.payment_strategy as payment
 
 
@@ -238,31 +239,33 @@ def main():
                     ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
                     case.balance.add_ccam_balances(ccam_summary_balance)
             p.pty_cd = party_code
-            db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
-                                    vendor_code=p.pty_cd))
-            # Process Payment
+            # db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
+            #                         vendor_code=p.pty_cd))
+
+            # Process Payments and find overpayments
             number_of_cases_for_prisoner = len(p.cases_list)
+            processed_cases = []
             all_payments_applied = False
             while not all_payments_applied:
                 if number_of_cases_for_prisoner == 0:
-                    context = payment.Context(payment.OverPaymentProcess())
                     all_payments_applied = True
 
                 elif number_of_cases_for_prisoner > 1:
                     fifo_case = p.cases_list.pop(0)
                     context = payment.Context(payment.MultipleCasePaymentProcess())
                     context.process_payment(fifo_case, float(p.amount_paid))
-
                     if fifo_case.overpayment:
                         fifo_case.status = 'PAID'
                         overpayment = fifo_case.balance.mark_paid()
-                        db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                        fifo_case.transaction = Transaction(check_number, float(p.amount_paid) - overpayment)
+                        p.amount_paid = overpayment
+                        # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                        processed_cases.append(fifo_case)
                         number_of_cases_for_prisoner -= 1
-                        # context = payment.Context(payment.SingleCasePaymentProcess)
-                        # context.process_payment(p.cases_list.pop(), float(overpayment))
-                        #
                     else:
-                        db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
+                        fifo_case.transaction = Transaction(check_number, p.amount_paid)
+                        processed_cases.append(fifo_case)
+                        # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
                         all_payments_applied = True
 
 

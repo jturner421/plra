@@ -23,6 +23,9 @@ def get_ccam_account_information(case, session, base_url):
             params={'caseNumberList': case.formatted_case_num},
 
         )
+        if response.status_code == 500:
+            print('The CCAM API has returned an error')
+            exit(1)
         return response.json()
     except TypeError as e:
         print(' An error occurred ')
@@ -58,7 +61,7 @@ def sum_account_balances(payments, case):
         # payment_lines[i] = payments['data'][i]
         payment_lines.append(payments['data'][i])
     df = pd.DataFrame(payment_lines)
-    party_code = df.iloc[0]['acct_cd']
+    # party_code = df.iloc[0]['acct_cd']
 
     df = df.drop(['case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
                   'prty_cd', 'last_updated'], axis=1)

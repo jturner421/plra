@@ -59,8 +59,6 @@ def prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name):
 
     backup = f'{db_backup_path}{db_backup_file_name}_backup.db'
     db_backup = sqlite3.connect(backup)
-
-    # restore = f'{db_backup_path}{db_backup_file_name}_{check_number}.db'
     db_restore = sqlite3.connect(destination)
 
     # first make a backup of the current state
@@ -197,7 +195,6 @@ def main():
         db_backup_path = prod_vars['NETWORK_DB_BACKUP_DIR']
         db_backup_file_name = prod_vars['DATABASE_BACKUP_FILE_NAME']
         destination = f'{db_backup_path}db/backup/{db_backup_file_name}_{check_number}.db'
-        # shutil.copyfile(db_file, destination)
         prod_db_backup(db_file, destination)
 
         # Instantiate prisoner objects
@@ -237,13 +234,14 @@ def main():
                         case.formatted_case_num = cte.format_case_num(case.case_number)
                         case.balance = Balance()
                         ccam_balance = ccam.get_ccam_account_information(case, session, base_url)
-                        case.acct_cd = ccam_balance['data'][0]['acct_cd']
+                        # case.acct_cd = ccam_balance['data'][0]['acct_cd']
                         ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
                         case.balance.add_ccam_balances(ccam_summary_balance)
                     except IndexError:
                         if not ccam_balance['data']:
                             cases_to_skip.append(case)
                             pass
+
                 if len(cases_to_skip) > 0:
                     for case in cases_to_skip:
                         if case in p.cases_list:
@@ -351,8 +349,9 @@ def main():
     payments = []
     for key, p in prisoner_list.items():
         for case in p.cases_list:
-            if case.transaction:
+            if case.transaction or case.overpayment:
                 payments.append({'prisoner': p, 'case': case})
+
     cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
 
 

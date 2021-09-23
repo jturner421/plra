@@ -1,34 +1,84 @@
 import collections
-from decimal import *
+import logging
+import requests
+from requests import Session
+from http.client import HTTPConnection
 
 import pandas as pd
+from pydantic import BaseSettings, Field, SecretStr
 
+from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
+from SCCM.bin.retry import retry
+
+log = logging.getLogger('urllib3')
+log.setLevel(logging.DEBUG)
+
+# logging from urllib3 to console
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+log.addHandler(ch)
+
+# print statements from `http.client.HTTPConnection` to console/stdout
+HTTPConnection.debuglevel = 1
 
 
-def get_ccam_account_information(case, session, base_url):
+class CCAMSettings(BaseSettings):
+    """
+    Pydantic model for managing CCAM API settings
+    """
+    ccam_username: str = Field(..., env='CCAM_USERNAME')
+    ccam_password: SecretStr = Field(..., env='CCAM_PASSWORD')
+    base_url: str = Field(..., env='BASE_URL')
+
+    class Config:
+        case_sensitive = False
+        env_file = '../ccam.env'
+        env_file_encoding = 'utf-8'
+
+
+settings = CCAMSettings()
+
+
+class CCAMSession:
+    """
+    Manage Requests sessions with context manager
+
+    """
+
+    def __init__(self, username: str, password: str, url: str):
+        self.username = username
+        self.password = password
+        self.url = url
+
+    def __enter__(self) -> Session:
+        self.session = requests.Session()
+        self.session.auth = (self.username, self.password)
+        self.session.verify = '../../US_Courts_CA_Chain/consolidate.pem'
+        return self.session
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # if int(response.headers['Keep-Alive'].split(',')[1].split('=')[-1]) <= 20:
+        #     session.close()
+        self.session.close()
+
+
+@retry(Exception, tries=4)
+def get_ccam_account_information(case):
     """
     Retrieves JIFMS CCAM information for case via API call
     :param case: case object
-    :param session: Requests session object
-    :param base_url: base API url
-    :return: dictionary of account balances for identified case
+
+    :return: dictionary of account balances for requested case
     """
-    try:
-        # case_string_split = str.split(case.formatted_case_num, '-')
-        # case = f'{str.upper(case_string_split[0])}-{case_string_split[1]}'
+    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url) as session:
         print(f'Getting case balances from JIFMS for {case.case_number}\n')
         response = session.get(
-            base_url,
+            settings.base_url,
             params={'caseNumberList': case.formatted_case_num},
 
         )
-        if response.status_code == 500:
-            print('The CCAM API has returned an error')
-            exit(1)
-        return response.json()
-    except TypeError as e:
-        print(' An error occurred ')
+    return response.json()
 
 
 def insert_ccam_account_balances(p, db_session):
@@ -51,14 +101,12 @@ def sum_account_balances(payments, case):
     """
     Totals CCAM payment lines and updates prison object with payment information as a Python List
     :param payments: List of individual payment lines for a case
-    :param case: case object
     :return: None
     """
 
     # parse payments
     payment_lines = []
     for i in range(len(payments['data'])):
-        # payment_lines[i] = payments['data'][i]
         payment_lines.append(payments['data'][i])
     df = pd.DataFrame(payment_lines)
     party_code = df.iloc[0]['acct_cd']
@@ -77,9 +125,7 @@ OverPaymentInfo = collections.namedtuple('OverPaymentInfo', 'exists, amount_over
 def check_for_overpayment(prisoner):
     """
     Calculates overpayment for payment if exists
-    :param amount: Amount paid by payee on state check
-    :param balance: CCAM account balance
-    :return: Exists > Bool, amount overpaid
+
     """
     try:
         if prisoner.amount <= prisoner.current_case.case_balance[0].amount_owed:

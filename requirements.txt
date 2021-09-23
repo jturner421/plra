@@ -67,3 +67,4 @@ pathlib~=1.0.1
 future~=0.18.2
 PyPDF2~=1.26.0
 alembic~=1.7.3
+pydantic~=1.8.2

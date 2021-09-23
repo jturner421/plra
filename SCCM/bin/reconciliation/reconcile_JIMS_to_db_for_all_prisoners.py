@@ -1,7 +1,7 @@
 """
 Performs reconciliation between JIFMS and application database
 
-This module compares balances for all prisoners in the application database against JIFMS CCAM dataand outputs the
+This module compares balances for all prisoners in the application database against JIFMS CCAM data and outputs the
 results to a Microsoft Excel file for review and subsequent processing.  The output file serves as input to the
 update_db_balances_from_JIFMS_for_all_prisoners module.
 """

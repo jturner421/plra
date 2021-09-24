@@ -38,7 +38,7 @@ class CCAMSettings(BaseSettings):
         env_file_encoding = 'utf-8'
 
 
-settings = CCAMSettings()
+
 
 
 class CCAMSession:
@@ -66,13 +66,15 @@ class CCAMSession:
 
 
 @retry(Exception, tries=4)
-def get_ccam_account_information(case):
+def get_ccam_account_information(case, **kwargs):
     """
     Retrieves JIFMS CCAM information for case via API call
     :param case: case object
 
     :return: dictionary of account balances for requested case
     """
+    if kwargs['settings']:
+        settings = kwargs['settings']
     with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url,
                      settings.cert_file) as session:
         print(f'Getting case balances from JIFMS for {case.case_number}\n')

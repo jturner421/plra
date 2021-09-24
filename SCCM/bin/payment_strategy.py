@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import List
 from abc import ABC, abstractmethod
-from SCCM.bin.case import Case
+from SCCM.models.case import Case
 from SCCM.bin.transaction import Transaction
 from SCCM.bin.prisoners import Prisoners
 from decimal import Decimal, ROUND_HALF_UP
@@ -72,7 +71,7 @@ class SingleCasePaymentProcess(Strategy):
             overpayment = case.balance.mark_paid()
             case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
                                            quantize(cents, ROUND_HALF_UP))
-            p.amount_paid = overpayment
+            p.refund = overpayment
             # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
             p.cases_list.append(case)
         else:

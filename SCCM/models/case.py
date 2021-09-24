@@ -1,27 +1,22 @@
-import os
-from collections import Counter
 from decimal import Decimal, ROUND_HALF_UP
-from dataclasses import dataclass
 from typing import Optional
-import fuzz as fuzz
-from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
+import re
 
 from SCCM.data.court_cases import CourtCase
-from SCCM.bin.balance import Balance
+from SCCM.models.balance import Balance
 from SCCM.bin.transaction import Transaction
 from SCCM.data.db_session import DbSession
+from pydantic import BaseModel, ValidationError, validator, constr
 
 cents = Decimal('0.01')
 
 
-@dataclass
-class Case:
+class Case(BaseModel):
     """
     A class used to track case information
 
     """
-    case_number: str
+    case_number: constr(regex="[0-9][0-9]-[cv][cv]-[0-9]+$")
     status: str
     overpayment: bool
     balance: Optional[Balance] = None

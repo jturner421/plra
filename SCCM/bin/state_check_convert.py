@@ -1,36 +1,34 @@
 from __future__ import annotations
-from typing import List
-from abc import ABC, abstractmethod
-import shutil
 from datetime import datetime
 from decimal import *
-from pathlib import Path
 import sqlite3
 import os
 import argparse
 
 import pandas as pd
-import requests
-from dotenv import load_dotenv
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
-from SCCM.config import config
-from SCCM.config.config_pydantic import Development, Context
 from SCCM.data.case_balance import CaseBalance
-from SCCM.data.case_filter import CaseFilter
 from SCCM.data.court_cases import CourtCase
-from SCCM.data.db_session import DbSession
 from SCCM.data.prisoners import Prisoner
-from SCCM.bin.case import Case
-from SCCM.bin.balance import Balance
-from SCCM.bin.transaction import Transaction
+from SCCM.models.balance import Balance
 import SCCM.bin.payment_strategy as payment
 from SCCM.config.config_model import PLRASettings
+from SCCM.bin.ccam_lookup import CCAMSettings
 
 
+def check_sum(check_amount, total_by_name_sum):
+    try:
+        assert total_by_name_sum == check_amount
+        print(
+            f'Check amount of {check_amount:,.2f} matches the sum of the converted file - {total_by_name_sum:,.2f}')
+    except AssertionError:
+        print(
+            f"ERROR: The sum of the file header:{check_amount:,.2f} does not match the sum:{total_by_name_sum:,.2f}"
+            f" of the converted file.")
 
 
 def convert_sheet_to_dataframe(sheet):
@@ -149,22 +147,6 @@ def main():
         config_file = '../config/dev.env'
         settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
-
-
-    # config_path = Path('/Users/jwt/PycharmProjects/plra_cli/SCCM')
-    # config_file = config_path / 'config' / 'config.ini'
-    # configuration = config.initialize_config(str(config_file))
-    # load_dotenv()
-
-    # Initialize session variables contained in config.ini
-    # prod_vars = config.get_prod_vars(configuration, 'PROD')
-    # network_base_dir = prod_vars['NETWORK_BASE_DIR']
-    # prod_db_path = prod_vars['NETWORK_DB_BASE_DIR']
-    # db_file_name = prod_vars['DATABASE_SQLite']
-    # db_file = f'{prod_db_path}{db_file_name}'
-    # db_session = DbSession.global_init(db_file)
-    # ccam_username = prod_vars['CCAM_USERNAME']
-
     # Initialize filter lists from database
     # suffix_list = dc.populate_suffix_list(db_session)
     # cases_filter_list = dc.populate_cases_filter_list(db_session)
@@ -184,25 +166,26 @@ def main():
         cents = Decimal('0.01')
         total_by_name_sum = state_check_data['Amount'].sum()
         total_by_name_sum = Decimal(total_by_name_sum).quantize(cents, ROUND_HALF_UP)
-        check_amount = Decimal(check_amount).quantize(cents, ROUND_HALF_UP)
 
-        try:
-            assert total_by_name_sum == check_amount
-            print(
-                f'Check amount of {check_amount:,.2f} matches the sum of the converted file - {total_by_name_sum:,.2f}')
-        except AssertionError:
-            print(
-                f"ERROR: The sum of the file header:{check_amount:,.2f} does not match the sum:{total_by_name_sum:,.2f}"
-                f" of the converted file.")
+        # check that dataframe aggregation matches original Excel sum
+        check_amount = Decimal(check_amount).quantize(cents, ROUND_HALF_UP)
+        check_sum(check_amount, total_by_name_sum)
+
+        # format constants for Excel output
+        check_date_split = str.split(check_date, '/')
+        deposit_num = f"PL{check_date_split[0]}{check_date_split[1]}{check_date_split[2][2:]}"
+
+        # create Microsoft Excel upload file
+        output_path = cte.create_output_path(file)
+        excel_file = cte.create_output_file(check_date, check_number, output_path)
 
         # set dataframe index to payee DOC#
         state_check_data = state_check_data.set_index('DOC')
 
-        # convert Panda object to dictionary
+        # convert Pandas dataframe to dictionary
         prisoner_dict = state_check_data.to_dict('index')
 
         # make backup of SQLite DB
-
         original = f'{settings.db_base_directory}{settings.db_file}.db'
         destination = f'{settings.db_backup_directory}/{settings.db_file}_{check_number}.db'
         prod_db_backup(original, destination)
@@ -215,17 +198,10 @@ def main():
             amount = Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
             prisoner_list[i] = prisoners.Prisoners(name, doc_num, amount)
 
-        # format constants for Excel output
-        check_date_split = str.split(check_date, '/')
-        deposit_num = f"PL{check_date_split[0]}{check_date_split[1]}{check_date_split[2][2:]}"
-
-        # create Microsoft Excel file
-        output_path = cte.create_output_path(file)
-        excel_file = cte.create_output_file(check_date, check_number, output_path)
-
         # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
         for key, p in prisoner_list.items():
             # lookup name in internal DB for existance
+            ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
             try:
                 stmt = select(Prisoner).filter_by(doc_num=int(p.doc_num))
                 prisoner = db_session.execute(stmt).scalar_one()
@@ -243,7 +219,7 @@ def main():
                     try:
                         case.formatted_case_num = cte.format_case_num(case.case_number)
                         case.balance = Balance()
-                        ccam_balance = ccam.get_ccam_account_information(case)
+                        ccam_balance = ccam.get_ccam_account_information(case, settings=ccam_settings)
                         # case.acct_cd = ccam_balance['data'][0]['acct_cd']
                         ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
                         case.balance.add_ccam_balances(ccam_summary_balance)
@@ -284,6 +260,8 @@ def main():
                 payments.append({'prisoner': p, 'case': case})
 
     cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
+
+
 
 
 if __name__ == '__main__':

@@ -232,7 +232,7 @@ class Prisoners:
         :param filter_list: list of cases for a prisoner
         :return: oldest active case
         """
-        from SCCM.bin.case import Case
+        from SCCM.models.case import Case
         cases = [f.name for f in os.scandir(self.case_search_dir) if f.is_dir()]
         active_cases = cases[:]
         for case in cases:

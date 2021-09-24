@@ -1,16 +1,15 @@
-from dataclasses import dataclass
-from typing import Optional, SupportsAbs
+from pydantic import BaseModel
+from typing import Optional
 
 
-@dataclass
-class Balance:
+class Balance(BaseModel):
     """
     A class used to track case balance information
 
     """
     amount_assessed: Optional[float] = 0
     amount_collected: Optional[float] = 0
-    amount_owed: SupportsAbs[SupportsAbs[float]] = 0
+    amount_owed: Optional[float] = 0
 
     def update_balance(self) -> None:
         pass
@@ -26,13 +25,13 @@ class Balance:
         self.amount_collected = ccam_balance['Total Collected']
         self.amount_owed = ccam_balance['Total Outstanding']
 
-    def mark_paid(self) -> SupportsAbs[float]:
+    def mark_paid(self) -> float:
         """
         pay off a case
 
         :return: overpayment amount
         """
         self.amount_collected = self.amount_assessed
-        overpayment: SupportsAbs[float] = abs(self.amount_owed)
+        overpayment = abs(self.amount_owed)
         self.amount_owed = 0
         return overpayment

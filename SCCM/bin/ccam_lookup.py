@@ -30,6 +30,7 @@ class CCAMSettings(BaseSettings):
     ccam_username: str = Field(..., env='CCAM_USERNAME')
     ccam_password: SecretStr = Field(..., env='CCAM_PASSWORD')
     base_url: str = Field(..., env='BASE_URL')
+    cert_file: str = Field(..., env='CERT_FILE')
 
     class Config:
         case_sensitive = False
@@ -46,15 +47,16 @@ class CCAMSession:
 
     """
 
-    def __init__(self, username: str, password: str, url: str):
+    def __init__(self, username: str, password: str, url: str, cert: str):
         self.username = username
         self.password = password
         self.url = url
+        self.cert = cert
 
     def __enter__(self) -> Session:
         self.session = requests.Session()
         self.session.auth = (self.username, self.password)
-        self.session.verify = '../../US_Courts_CA_Chain/consolidate.pem'
+        self.session.verify = self.cert
         return self.session
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -71,7 +73,8 @@ def get_ccam_account_information(case):
 
     :return: dictionary of account balances for requested case
     """
-    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url) as session:
+    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url,
+                     settings.cert_file) as session:
         print(f'Getting case balances from JIFMS for {case.case_number}\n')
         response = session.get(
             settings.base_url,

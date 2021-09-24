@@ -1,11 +1,14 @@
+from __future__ import annotations
+from typing import List
+from abc import ABC, abstractmethod
 import shutil
 from datetime import datetime
 from decimal import *
 from pathlib import Path
 import sqlite3
 import os
+import argparse
 
-# import keyring
 import pandas as pd
 import requests
 from dotenv import load_dotenv
@@ -15,6 +18,7 @@ from sqlalchemy.exc import NoResultFound
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
 from SCCM.config import config
+from SCCM.config.config_pydantic import Development, Context
 from SCCM.data.case_balance import CaseBalance
 from SCCM.data.case_filter import CaseFilter
 from SCCM.data.court_cases import CourtCase
@@ -24,6 +28,9 @@ from SCCM.bin.case import Case
 from SCCM.bin.balance import Balance
 from SCCM.bin.transaction import Transaction
 import SCCM.bin.payment_strategy as payment
+from SCCM.config.config_model import PLRASettings
+
+
 
 
 def convert_sheet_to_dataframe(sheet):
@@ -44,8 +51,8 @@ def progress(status, remaining, total):
     print(f'Copied {total - remaining} of {total} pages...')
 
 
-def prod_db_backup(db_file, destination):
-    db_orig = sqlite3.connect(db_file)
+def prod_db_backup(original, destination):
+    db_orig = sqlite3.connect(original)
     db_backup = sqlite3.connect(destination)
     with db_backup:
         db_orig.backup(db_backup, pages=1, progress=progress)
@@ -134,19 +141,29 @@ def get_existing_cases_from_network(p):
 
 
 def main():
-    config_path = Path('/Users/jwt/PycharmProjects/plra/SCCM')
-    config_file = config_path / 'config' / 'config.ini'
-    configuration = config.initialize_config(str(config_file))
-    load_dotenv()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", help="Enter mode [dev,test,prod] for execution")
+    args = parser.parse_args()
+
+    if args.mode == 'dev':
+        config_file = '../config/dev.env'
+        settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
+
+
+
+    # config_path = Path('/Users/jwt/PycharmProjects/plra_cli/SCCM')
+    # config_file = config_path / 'config' / 'config.ini'
+    # configuration = config.initialize_config(str(config_file))
+    # load_dotenv()
 
     # Initialize session variables contained in config.ini
-    prod_vars = config.get_prod_vars(configuration, 'PROD')
-    network_base_dir = prod_vars['NETWORK_BASE_DIR']
-    prod_db_path = prod_vars['NETWORK_DB_BASE_DIR']
-    db_file_name = prod_vars['DATABASE_SQLite']
-    db_file = f'{prod_db_path}{db_file_name}'
-    db_session = DbSession.global_init(db_file)
-    ccam_username = prod_vars['CCAM_USERNAME']
+    # prod_vars = config.get_prod_vars(configuration, 'PROD')
+    # network_base_dir = prod_vars['NETWORK_BASE_DIR']
+    # prod_db_path = prod_vars['NETWORK_DB_BASE_DIR']
+    # db_file_name = prod_vars['DATABASE_SQLite']
+    # db_file = f'{prod_db_path}{db_file_name}'
+    # db_session = DbSession.global_init(db_file)
+    # ccam_username = prod_vars['CCAM_USERNAME']
 
     # Initialize filter lists from database
     # suffix_list = dc.populate_suffix_list(db_session)
@@ -185,10 +202,10 @@ def main():
         prisoner_dict = state_check_data.to_dict('index')
 
         # make backup of SQLite DB
-        db_backup_path = prod_vars['NETWORK_DB_BACKUP_DIR']
-        db_backup_file_name = prod_vars['DATABASE_BACKUP_FILE_NAME']
-        destination = f'{db_backup_path}db/backup/{db_backup_file_name}_{check_number}.db'
-        prod_db_backup(db_file, destination)
+
+        original = f'{settings.db_base_directory}{settings.db_file}.db'
+        destination = f'{settings.db_backup_directory}/{settings.db_file}_{check_number}.db'
+        prod_db_backup(original, destination)
 
         # Instantiate prisoner objects
         prisoner_list = dict()

@@ -59,7 +59,7 @@ class Strategy(ABC):
 
 class SingleCasePaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
-        case = p.cases_list.pop(0)
+        case = p.cases_list[0]
         case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
                                         + p.amount_paid
         case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
@@ -72,44 +72,35 @@ class SingleCasePaymentProcess(Strategy):
             case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
                                            quantize(cents, ROUND_HALF_UP))
             p.refund = overpayment
-            # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
-            p.cases_list.append(case)
         else:
             case.transaction = Transaction(check_number, p.amount_paid)
-            p.cases_list.append(case)
         return p
 
 
 class MultipleCasePaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
         number_of_cases_for_prisoner = len(p.cases_list)
-        processed_cases = []
         all_payments_applied = False
         while not all_payments_applied and number_of_cases_for_prisoner > 0:
-            case = p.cases_list.pop(0)
-            case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
-                                            + p.amount_paid
-            case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
-                                       - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
-            if case.balance.amount_owed < 0:
-                case.overpayment = True
-            if case.overpayment:
-                case.status = 'PAID'
-                overpayment = case.balance.mark_paid()
-                case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
-                                               quantize(cents, ROUND_HALF_UP))
-                p.amount_paid = overpayment
-                # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
-                processed_cases.append(case)
-                number_of_cases_for_prisoner -= 1
-            else:
-                case.transaction = Transaction(check_number, p.amount_paid)
-                processed_cases.append(case)
-                # db_session = fifo_case.create_case_db_object(db_session, p.doc_num)
-                all_payments_applied = True
-
-        for case in processed_cases:
-            p.cases_list.append(case)
+            for case in p.cases_list:
+                case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
+                                                + p.amount_paid
+                case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
+                                           - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
+                if case.balance.amount_owed < 0:
+                    case.overpayment = True
+                if case.overpayment:
+                    case.status = 'PAID'
+                    overpayment = case.balance.mark_paid()
+                    case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
+                                                   quantize(cents, ROUND_HALF_UP))
+                    p.amount_paid = overpayment
+                    p.refund = overpayment
+                    number_of_cases_for_prisoner -= 1
+                else:
+                    case.transaction = Transaction(check_number, p.amount_paid)
+                    all_payments_applied = True
+                    p.refund = 0
         return p
 
 

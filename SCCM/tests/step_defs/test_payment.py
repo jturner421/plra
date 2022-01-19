@@ -11,6 +11,7 @@ cents = Decimal('0.01')
 
 @scenario('../features/calculate_payment.feature', 'Single Case is paid off')
 @scenario('../features/calculate_payment.feature', 'Single Case with balance')
+@scenario("../features/calculate_payment.feature", 'No Case')
 def test_single_payment():
     pass
 
@@ -20,6 +21,12 @@ def get_prisoner():
     p = Prisoners('Wayne Hart', 1234, Decimal(172.87).quantize(cents, ROUND_HALF_UP))
     p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
     p.cases_list[0].formatted_case_num = 'DWIW21CV000012'
+    return p
+
+
+@given("I'm a prisoner with no active cases", target_fixture='prisoner_nocase')
+def get_prisoner_with_no_case():
+    p = Prisoners('Wayne Hart', 1234, Decimal(50.00).quantize(cents, ROUND_HALF_UP))
     return p
 
 
@@ -58,3 +65,16 @@ def check_for_normal_payment(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == Decimal(34.31).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[0].balance.amount_collected == Decimal(770.690).quantize(cents, ROUND_HALF_UP)
     assert not hasattr(prisoner, 'refund')
+
+
+@when("I make a payment in the amount of $50.00")
+def make_payment_with_no_active_cases(prisoner_nocase):
+    check_number = 57686
+    import SCCM.bin.payment_strategy as payment
+    context = payment.Context(payment.OverPaymentProcess())
+    context.process_payment(prisoner_nocase, check_number)
+
+
+@then("I should receive a refund of $50.00")
+def process_overpayment(prisoner_nocase):
+    pass

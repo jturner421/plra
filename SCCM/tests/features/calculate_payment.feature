@@ -16,6 +16,6 @@ Feature: Payment
 
   Scenario: No Case
     Given I'm a prisoner with no active cases
-    When I make a payment in the amount of $12.34
-    Then I should receive a refund of $12.34
+    When I make a payment in the amount of $50.00
+    Then I should receive a refund of $50.00
 

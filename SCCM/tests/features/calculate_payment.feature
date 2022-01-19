@@ -13,3 +13,9 @@ Feature: Payment
     And I owe $160.65
     When I make a payment in the amount of $126.34
     Then I should have a balance of $34.31
+
+  Scenario: No Case
+    Given I'm a prisoner with no active cases
+    When I make a payment in the amount of $12.34
+    Then I should receive a refund of $12.34
+

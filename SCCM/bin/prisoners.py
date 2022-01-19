@@ -240,68 +240,67 @@ class Prisoners:
                 active_cases.remove(case)
         active_cases.sort()
         for c in active_cases:
-            self.cases_list.append(Case(c, 'ACTIVE', overpayment=False))
-        # return active_cases
+            self.cases_list.append(Case(case_number=str.upper(c), status='ACTIVE', overpayment=False))
 
-    def _format_name(self):
-        # TODO - Need to finish this for Excel Output
-        name = self.lookup_name.split()
-        reordered_name = []
-        if len(name) == 3:
-            reordered_name.append(name[2])
-            reordered_name.append(name[1])
-            reordered_name.append(name[0])
-            self.lookup_name = " ".join(reordered_name)
+        def _format_name(self):
+            # TODO - Need to finish this for Excel Output
+            name = self.lookup_name.split()
+            reordered_name = []
+            if len(name) == 3:
+                reordered_name.append(name[2])
+                reordered_name.append(name[1])
+                reordered_name.append(name[0])
+                self.lookup_name = " ".join(reordered_name)
 
-    def create_transaction(self, check_number, db_session):
-        """
-        Records prisoner payment in database
-        :param result: Case information for selected prisoner
-        :param check_number: Check number for payment made
-        :param db_session: SQLAlchemy session
-        :return:
-        """
-        print(f'Creating transaction for {self.check_name}')
+        def create_transaction(self, check_number, db_session):
+            """
+            Records prisoner payment in database
+            :param result: Case information for selected prisoner
+            :param check_number: Check number for payment made
+            :param db_session: SQLAlchemy session
+            :return:
+            """
+            print(f'Creating transaction for {self.check_name}')
 
-        self.current_case.case_transactions.append(
-            CaseTransaction(court_case_id=self.current_case.id, check_number=check_number, amount_paid=self.amount))
-        # db_session.add(self.current_case)
-        # db_session.commit()
+            self.current_case.case_transactions.append(
+                CaseTransaction(court_case_id=self.current_case.id, check_number=check_number, amount_paid=self.amount))
+            # db_session.add(self.current_case)
+            # db_session.commit()
 
-    def update_account_balance(self):
-        """
-        Updates case balance for prisoner, checks if case is paid off, and adds to database session for
-        update
-        :param result: Case information for selected prisoner
-        :param db_session: SQLAlchemy session
-        """
+        def update_account_balance(self):
+            """
+            Updates case balance for prisoner, checks if case is paid off, and adds to database session for
+            update
+            :param result: Case information for selected prisoner
+            :param db_session: SQLAlchemy session
+            """
 
-        print(f'Updating case balances for {self.check_name}')
+            print(f'Updating case balances for {self.check_name}')
 
-        self.current_case.case_balance[0].amount_owed = self.current_case.case_balance[0].amount_owed - self.amount
+            self.current_case.case_balance[0].amount_owed = self.current_case.case_balance[0].amount_owed - self.amount
 
-        if self.current_case.case_balance[0].amount_owed <= 0:
-            self.current_case.case_balance[0].amount_owed = 0
-            self.current_case.case_comment = 'PAID'
-            self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_assessed
-            return
+            if self.current_case.case_balance[0].amount_owed <= 0:
+                self.current_case.case_balance[0].amount_owed = 0
+                self.current_case.case_comment = 'PAID'
+                self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_assessed
+                return
 
-        self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[
-                                                                 0].amount_collected + self.amount
-        if self.current_case.case_balance[0].amount_collected > self.current_case.case_balance[0].amount_assessed:
-            self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_assessed
+            self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[
+                                                                     0].amount_collected + self.amount
+            if self.current_case.case_balance[0].amount_collected > self.current_case.case_balance[0].amount_assessed:
+                self.current_case.case_balance[0].amount_collected = self.current_case.case_balance[0].amount_assessed
 
-    def update_pty_acct_cd(self, result, session):
-        """
-        Updates JIFMS account code for prisoner if not found
-        :param result: Case information for selected prisoner
-        :param session:
-        :return: SQLAlchemy session
-        """
-        update_values = {'acct_code': self.acct_cd, 'vendor_code': self.pty_cd}
-        for key, value in update_values.items():
-            if key == 'acct_code':
-                result[0].CourtCase.acct_cd = value
-            else:
-                setattr(result[0].CourtCase.prisoner, key, value)
-        session.commit()
+        def update_pty_acct_cd(self, result, session):
+            """
+            Updates JIFMS account code for prisoner if not found
+            :param result: Case information for selected prisoner
+            :param session:
+            :return: SQLAlchemy session
+            """
+            update_values = {'acct_code': self.acct_cd, 'vendor_code': self.pty_cd}
+            for key, value in update_values.items():
+                if key == 'acct_code':
+                    result[0].CourtCase.acct_cd = value
+                else:
+                    setattr(result[0].CourtCase.prisoner, key, value)
+            session.commit()

@@ -16,7 +16,7 @@ class Case(BaseModel):
     A class used to track case information
 
     """
-    case_number: constr(regex="[0-9][0-9]-[cv][cv]-[0-9]+$")
+    case_number: constr(regex="[0-9][0-9]-[CV][CV]-[0-9]+$")
     status: str
     overpayment: bool
     balance: Optional[Balance] = None

@@ -18,7 +18,7 @@ def test_single_payment():
 @given("I'm a prisoner with an active case", target_fixture='prisoner')
 def get_prisoner():
     p = Prisoners('Wayne Hart', 1234, Decimal(172.87).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(Case(case_number='21-cv-12', status='ACTIVE', overpayment=False))
+    p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
     p.cases_list[0].formatted_case_num = 'DWIW21CV000012'
     return p
 
@@ -38,7 +38,6 @@ def make_payment_that_results_in_overpayment(prisoner):
 
 @then("I should receive a refund of $12.22")
 def check_for_overpayment(prisoner):
-    assert prisoner.cases_list[0].overpayment is True
     assert prisoner.cases_list[0].balance.amount_owed == 0
     assert prisoner.cases_list[0].balance.amount_collected == 805
     assert prisoner.refund == Decimal(12.22).quantize(cents, ROUND_HALF_UP)

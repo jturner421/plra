@@ -60,13 +60,14 @@ class Strategy(ABC):
 class SingleCasePaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
         case = p.cases_list[0]
+        overpayment = False
         case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
                                         + p.amount_paid
         case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
                                    - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
         if case.balance.amount_owed < 0:
-            case.overpayment = True
-        if case.overpayment:
+            overpayment = True
+        if overpayment:
             case.status = 'PAID'
             overpayment = case.balance.mark_paid()
             case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
@@ -80,6 +81,7 @@ class SingleCasePaymentProcess(Strategy):
 class MultipleCasePaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
         number_of_cases_for_prisoner = len(p.cases_list)
+        overpayment = False
         all_payments_applied = False
         while not all_payments_applied and number_of_cases_for_prisoner > 0:
             for case in p.cases_list:
@@ -88,8 +90,11 @@ class MultipleCasePaymentProcess(Strategy):
                 case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
                                            - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
                 if case.balance.amount_owed < 0:
-                    case.overpayment = True
-                if case.overpayment:
+                    overpayment = True
+                else:
+                    overpayment = False
+
+                if overpayment:
                     case.status = 'PAID'
                     overpayment = case.balance.mark_paid()
                     case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
@@ -101,6 +106,7 @@ class MultipleCasePaymentProcess(Strategy):
                     case.transaction = Transaction(check_number, p.amount_paid)
                     all_payments_applied = True
                     p.refund = 0
+                    break
         return p
 
 

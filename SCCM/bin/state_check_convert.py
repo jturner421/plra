@@ -11,6 +11,7 @@ from sqlalchemy.exc import NoResultFound
 
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
+from SCCM.data.db_session import DbSession
 from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.prisoners import Prisoner
@@ -199,6 +200,7 @@ def main():
             prisoner_list[i] = prisoners.Prisoners(name, doc_num, amount)
 
         # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
+        db_session = DbSession.global_init(f"{settings.db_base_directory}{settings.db_file}")
         for key, p in prisoner_list.items():
             # lookup name in internal DB for existance
             ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
@@ -212,7 +214,7 @@ def main():
                 prisoner_found = False
             if not prisoner_found:
                 # retrieve cases and CCAM balances
-                p = add_prisoner_to_db(network_base_dir, p)
+                p = add_prisoner_to_db(settings.network_base_directory, p)
                 p = get_existing_cases_from_network(p)
                 cases_to_skip = []
                 for i, case in enumerate(p.cases_list):

@@ -20,8 +20,8 @@ def test_overpayment():
 @given("I'm a prisoner with multiple cases", target_fixture='prisoner')
 def get_prisoner():
     p = Prisoners('Bob Smith', 1234, Decimal(525.00).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(Case(case_number='16-cv-345', status='ACTIVE', overpayment=False))
-    p.cases_list.append(Case(case_number='21-cv-12', status='ACTIVE', overpayment=False))
+    p.cases_list.append(Case(case_number='16-CV-345', status='ACTIVE', overpayment=False))
+    p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
     p.cases_list[0].formatted_case_num = 'DWIW16CV000345'
     p.cases_list[1].formatted_case_num = 'DWIW21CV000012'
     return p
@@ -49,8 +49,9 @@ def check_for_overpayment_multiple(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == 0
     assert prisoner.cases_list[0].status == 'PAID'
     assert prisoner.cases_list[0].balance.amount_collected == 805
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(160.65).quantize(cents, ROUND_HALF_UP)
     # assert prisoner.cases_list[0].balance.amount_owed == Decimal(0.00).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[1].balance.amount_collected == Decimal(350.00).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[1].transaction.amount_paid ==  Decimal(350.00).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[1].transaction.amount_paid == Decimal(350.00).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[1].status == 'PAID'
     assert prisoner.refund == Decimal(14.35).quantize(cents, ROUND_HALF_UP)

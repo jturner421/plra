@@ -186,50 +186,61 @@ def write_rows_to_output_file(file, payee_list, deposit_num, effective_date):
     sheet = wb.get_sheet_by_name('PLRA')
     rownum = 2  # skip first row for header
     for p in payee_list:
-        # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
-        # checks for the same day
-        sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
-        sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
-
-        # Check length of name to fit within CCAM batch upload constraints
-        try:
-            if len(p['prisoner'].check_name) <= 20:
-                sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
-            else:
-                shortened_name = get_shortened_name(p['prisoner'].check_name)
-                sheet.cell(row=rownum, column=3).value = shortened_name
-        except TypeError as error:
-            print(f'{p.check_name} threw {error}')
-
-        try:
-            sheet.cell(row=rownum, column=4).value = effective_date
-            sheet.cell(row=rownum, column=5).value = Decimal(p['case'].transaction.amount_paid)
-            sheet.cell(row=rownum, column=6).value = deposit_num
-            sheet.cell(row=rownum, column=7).value = str.upper(p['case'].formatted_case_num)
-            sheet.cell(row=rownum, column=8).value = p['case'].balance.amount_assessed
-            sheet.cell(row=rownum, column=9).value = p['case'].balance.amount_collected
-            sheet.cell(row=rownum, column=10).value = p['case'].balance.amount_owed
-        except AttributeError:
-            sheet.cell(row=rownum, column=4).value = effective_date
-            sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].amount_paid)
-            sheet.cell(row=rownum, column=6).value = deposit_num
-            sheet.cell(row=rownum, column=7).value = p['case'].case_number.upper()
-            sheet.cell(row=rownum, column=8).value = 0
-            sheet.cell(row=rownum, column=9).value = 0
-            sheet.cell(row=rownum, column=10).value = 0
-            sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].amount_paid)
-
-        # try:
-        #     sheet.cell(row=rownum, column=11).value = p.overpayment.amount_overpaid
-        # except AttributeError as error:
-        #     print(f'{p.check_name} threw {error}')
-        for c in range(1, 9):
-            if c not in [5, 8, 9, 10]:
-                sheet.cell(row=rownum, column=c).style = 'data'
-            else:
-                sheet.cell(row=rownum, column=c).number_format = '$#,##0.00'
-
+        if p['prisoner'].overpayment:
+            sheet.cell = _overpayment_row(p, rownum, sheet)
+        else:
+            sheet.cell = _transaction_row(deposit_num, effective_date, p, rownum, sheet)
         rownum += 1
 
     wb.save(file)
     print(f"The PLRA upload file has been saved as {file}\n")
+
+
+def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
+    # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
+    # checks for the same day
+    sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
+    sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
+    # Check length of name to fit within CCAM batch upload constraints
+    try:
+        if len(p['prisoner'].check_name) <= 20:
+            sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
+        else:
+            shortened_name = get_shortened_name(p['prisoner'].check_name)
+            sheet.cell(row=rownum, column=3).value = shortened_name
+    except TypeError as error:
+        print(f'{p.check_name} threw {error}')
+    try:
+        sheet.cell(row=rownum, column=4).value = effective_date
+        sheet.cell(row=rownum, column=5).value = Decimal(p['case'].transaction.amount_paid)
+        sheet.cell(row=rownum, column=6).value = deposit_num
+        sheet.cell(row=rownum, column=7).value = str.upper(p['case'].formatted_case_num)
+        sheet.cell(row=rownum, column=8).value = p['case'].balance.amount_assessed
+        sheet.cell(row=rownum, column=9).value = p['case'].balance.amount_collected
+        sheet.cell(row=rownum, column=10).value = p['case'].balance.amount_owed
+    except AttributeError:
+        sheet.cell(row=rownum, column=4).value = effective_date
+        sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].amount_paid)
+        sheet.cell(row=rownum, column=6).value = deposit_num
+        sheet.cell(row=rownum, column=7).value = p['case'].case_number.upper()
+        sheet.cell(row=rownum, column=8).value = 0
+        sheet.cell(row=rownum, column=9).value = 0
+        sheet.cell(row=rownum, column=10).value = 0
+        sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].amount_paid)
+    for c in range(1, 9):
+        if c not in [5, 8, 9, 10]:
+            sheet.cell(row=rownum, column=c).style = 'data'
+        else:
+            sheet.cell(row=rownum, column=c).number_format = '$#,##0.00'
+    return sheet.cell
+
+
+def _overpayment_row(p, rownum, sheet):
+    # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
+    # checks for the same day
+    sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
+    sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
+    sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
+    sheet.cell(row=rownum, column=7).value = 'No Active Cases'
+    sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].refund)
+    return sheet.cell

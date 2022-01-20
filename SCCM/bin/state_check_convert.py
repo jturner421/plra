@@ -257,9 +257,12 @@ def main():
     # Save excel file for upload to JIFMS
     payments = []
     for key, p in prisoner_list.items():
-        for case in p.cases_list:
-            if case.transaction or case.overpayment:
-                payments.append({'prisoner': p, 'case': case})
+        if p.overpayment:
+            payments.append({'prisoner': p})
+        else:
+            for case in p.cases_list:
+                if case.transaction or case.overpayment:
+                    payments.append({'prisoner': p, 'case': case})
 
     cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
 

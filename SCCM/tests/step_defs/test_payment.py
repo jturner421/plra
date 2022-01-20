@@ -77,4 +77,5 @@ def make_payment_with_no_active_cases(prisoner_nocase):
 
 @then("I should receive a refund of $50.00")
 def process_overpayment(prisoner_nocase):
-    pass
+    assert prisoner_nocase.overpayment
+    assert prisoner_nocase.refund == 50.00

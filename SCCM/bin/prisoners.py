@@ -75,17 +75,9 @@ class Prisoners:
         self.check_name = check_name
         self.doc_num = doc_num
         self.amount_paid = amount_paid
-        # self.lookup_name = None
         self.cases_list = []
-        # self.orig_case_number = None
-        # self.plra_name = None
-        # self.search_dir = None
-        # self.case_search_dir = None
-        # self.formatted_case_num = None
-        # self.ccam_balance = None
-        # self.acct_cd = None
         self.pty_cd: Optional[str] = None
-        # self.overpayment = None
+        self.overpayment = None
 
     def __repr__(self):
         return (f'{self.__class__.__name__}'

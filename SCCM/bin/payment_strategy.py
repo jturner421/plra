@@ -112,5 +112,7 @@ class MultipleCasePaymentProcess(Strategy):
 
 class OverPaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
-        p.cases_list.append(Case('No Active Cases', 'PAID', True))
+        # p.cases_list.append(Case('No Active Cases', 'PAID', True))
+        p.overpayment = True
+        p.refund = p.amount_paid
         return p

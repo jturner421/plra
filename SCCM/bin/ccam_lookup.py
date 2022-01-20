@@ -3,6 +3,7 @@ import logging
 import requests
 from requests import Session
 from http.client import HTTPConnection
+import json
 
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
@@ -37,9 +38,6 @@ class CCAMSettings(BaseSettings):
         env_file_encoding = 'utf-8'
 
 
-
-
-
 class CCAMSession:
     """
     Manage Requests sessions with context manager
@@ -65,10 +63,10 @@ class CCAMSession:
 
 
 @retry(Exception, tries=4)
-def get_ccam_account_information(case, **kwargs):
+def get_ccam_account_information(cases, **kwargs):
     """
     Retrieves JIFMS CCAM information for case via API call
-    :param case: case object
+    :param cases: case object
 
     :return: dictionary of account balances for requested case
     """
@@ -76,13 +74,27 @@ def get_ccam_account_information(case, **kwargs):
         settings = kwargs['settings']
     with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url,
                      settings.cert_file) as session:
-        print(f'Getting case balances from JIFMS for {case.case_number}\n')
+        print(f'Getting case balances from CCAM for {kwargs["name"]}\n')
+        data = {"caseNumberList": cases}
+        headers = {
+            'Content-Type': 'application/json'
+        }
+
         response = session.get(
             settings.base_url,
-            params={'caseNumberList': case.formatted_case_num},
+            headers=headers,
+            params=data).json()
 
-        )
-    return response.json()
+        ccam_data = response["data"]
+        for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
+            data = {"caseNumberList": cases, "page": page}
+            response = session.get(
+                settings.base_url,
+                headers=headers,
+                params=data).json()
+            ccam_data.extend(response["data"])
+
+    return ccam_data
 
 
 def insert_ccam_account_balances(p, db_session):
@@ -101,26 +113,33 @@ def insert_ccam_account_balances(p, db_session):
     s.close()
 
 
-def sum_account_balances(payments, case):
+def sum_account_balances(payments):
     """
     Totals CCAM payment lines and updates prison object with payment information as a Python List
     :param payments: List of individual payment lines for a case
     :return: None
     """
 
-    # parse payments
-    payment_lines = []
-    for i in range(len(payments['data'])):
-        payment_lines.append(payments['data'][i])
-    df = pd.DataFrame(payment_lines)
-    party_code = df.iloc[0]['acct_cd']
+    # create a pandas dataframe
+    df = pd.DataFrame(payments)
+    df = df.fillna(0)
 
-    df = df.drop(['case_num', 'case_titl', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ', 'debt_typ_lnum', 'acct_cd',
-                  'prty_cd', 'last_updated'], axis=1)
-    df.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
-    df = df.sum()
-    ccam_account_balance = pd.Series.to_dict(df)
-    return ccam_account_balance, party_code
+    # get party code
+    party_code = df.drop_duplicates('prty_cd')
+
+    # get account sums grouped by case number
+    balances = df.groupby(df.case_num).sum()
+    balances = balances.drop(['debt_typ_lnum'], axis=1)
+    balances.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
+
+    # retrieve account codes and add to balances
+    accounts = df.drop_duplicates('case_num', keep='last')
+    accounts.reset_index(drop=True, inplace=True)
+    accounts.set_index(['case_num'], inplace=True)
+    balances = balances.join(accounts.acct_cd, how='left')
+
+    # ccam_account_balance = pd.Series.to_dict(balances)
+    return balances, party_code.prty_cd.values[0]
 
 
 OverPaymentInfo = collections.namedtuple('OverPaymentInfo', 'exists, amount_overpaid')

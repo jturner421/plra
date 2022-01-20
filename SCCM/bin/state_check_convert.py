@@ -217,24 +217,29 @@ def main():
                 p = add_prisoner_to_db(settings.network_base_directory, p)
                 p = get_existing_cases_from_network(p)
                 cases_to_skip = []
-                for i, case in enumerate(p.cases_list):
+                cases_dict = {case.case_number: cte.format_case_num(case.case_number) for case in p.cases_list}
+
+                ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
+                ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=ccam_settings,
+                                                                  name=p.lookup_name)
+                ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+                for case in p.cases_list:
                     try:
-                        case.formatted_case_num = cte.format_case_num(case.case_number)
                         case.balance = Balance()
-                        ccam_balance = ccam.get_ccam_account_information(case, settings=ccam_settings)
-                        # case.acct_cd = ccam_balance['data'][0]['acct_cd']
-                        ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balance, case)
-                        case.balance.add_ccam_balances(ccam_summary_balance)
-                    except IndexError:
-                        if not ccam_balance['data']:
-                            cases_to_skip.append(case)
-                            pass
+                        balance_key = cases_dict[case.case_number].split('-')[0]
+                        case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
+                        case.formatted_case_num = cases_dict[case.case_number]
+                        case.balance.add_ccam_balances(ccam_summary_balance.loc[balance_key].to_dict())
+
+                    except KeyError:
+                        cases_to_skip.append(case)
+                        pass
 
                 if len(cases_to_skip) > 0:
                     for case in cases_to_skip:
                         if case in p.cases_list:
                             p.cases_list.remove(case)
-                else:
+                if party_code:
                     p.pty_cd = party_code
 
             # db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
@@ -265,8 +270,6 @@ def main():
                     payments.append({'prisoner': p, 'case': case})
 
     cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
-
-
 
 
 if __name__ == '__main__':

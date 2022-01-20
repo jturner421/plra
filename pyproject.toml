@@ -21,6 +21,7 @@ pydantic = "^1.8.2"
 pytest = '*'
 Sphinx = '*'
 pytest-bdd = '*'
+alembic = "^1.7.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

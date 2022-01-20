@@ -13,8 +13,8 @@ from SCCM.data.modelbase import SqlAlchemyBase
 class Prisoner(SqlAlchemyBase):
     __tablename__ = 'prisoners'
 
-    # id = sa.Column(sa.INT, primary_key=True, autoincrement=True)
-    doc_num = sa.Column(sa.Integer, primary_key=True)
+    id = sa.Column(sa.INT, primary_key=True, autoincrement=True)
+    doc_num = sa.Column(sa.Integer)
     created_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
     updated_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
     judgment_name = sa.Column(sa.String, index=True)

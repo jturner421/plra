@@ -20,7 +20,6 @@ class CaseReconciliation(SqlAlchemyBase):
     updated_amount_assessed = sa.Column(sa.NUMERIC, nullable=False)
     updated_amount_collected = sa.Column(sa.NUMERIC, nullable=False)
     updated_amount_owed = sa.Column(sa.NUMERIC, nullable=False)
-    # case_recon = orm.relationship("CourtCase", back_populates="case_reconciliation")
 
 
-# CourtCase.case_reconciliation = orm.relationship("CaseReconciliation", back_populates="case_recon")
+

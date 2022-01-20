@@ -1,5 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional
+from decimal import Decimal, ROUND_HALF_UP
+
+cents = Decimal('0.01')
 
 
 class Balance(BaseModel):
@@ -7,9 +10,9 @@ class Balance(BaseModel):
     A class used to track case balance information
 
     """
-    amount_assessed: Optional[float] = 0
-    amount_collected: Optional[float] = 0
-    amount_owed: Optional[float] = 0
+    amount_assessed: Optional[Decimal] = 0.00
+    amount_collected: Optional[Decimal] = 0.00
+    amount_owed: Optional[Decimal] = 0.00
 
     def update_balance(self) -> None:
         pass
@@ -21,9 +24,9 @@ class Balance(BaseModel):
         :param ccam_balance: CCAM balance
 
         """
-        self.amount_assessed = ccam_balance['Total Owed']
-        self.amount_collected = ccam_balance['Total Collected']
-        self.amount_owed = ccam_balance['Total Outstanding']
+        self.amount_assessed = Decimal(ccam_balance['Total Owed'].item()).quantize(cents,ROUND_HALF_UP)
+        self.amount_collected = Decimal(ccam_balance['Total Collected'].item()).quantize(cents,ROUND_HALF_UP)
+        self.amount_owed = Decimal(ccam_balance['Total Outstanding'].item()).quantize(cents,ROUND_HALF_UP)
 
     def mark_paid(self) -> float:
         """

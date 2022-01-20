@@ -12,7 +12,7 @@ from SCCM.config import config
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.db_session import DbSession
 
-
+# TODO - rewrite
 def main():
     p = Path.cwd()
     config_file = p.parent.parent / 'config' / 'config.ini'

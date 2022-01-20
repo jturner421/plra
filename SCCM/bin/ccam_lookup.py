@@ -7,7 +7,6 @@ from http.client import HTTPConnection
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
 
-from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
 from SCCM.bin.retry import retry
 

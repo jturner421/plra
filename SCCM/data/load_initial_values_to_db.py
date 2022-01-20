@@ -9,8 +9,7 @@ from SCCM.data.suffix import SuffixTable
 
 
 def init_db():
-    # p = Path.cwd()
-    # db_file = p.parent / 'db' / 'wiw_plra-old.sqlite'
+    #Todo - get db_file from settings
     db_file = '/Users/jwt/wiw_plra.sqlite'
     DbSession.global_init(str(db_file))
 

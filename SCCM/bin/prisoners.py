@@ -9,7 +9,6 @@ from fuzzywuzzy import process
 
 from SCCM.bin import ccam_lookup as ccam
 from SCCM.bin import convert_to_excel as cte
-from SCCM.data.case_balance import CaseBalance
 from SCCM.data.case_transaction import CaseTransaction
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.prisoners import Prisoner
@@ -162,7 +161,7 @@ class Prisoners:
         self.cases_list = cases
 
     def _insert_ccam_account_balances(self, db_session, new_payee, i, session, base_url):
-        # TODO move to case balance class
+        # TODO move to CourtCase class
         """db_session, new_payee, case_pos, session, base_url
         Inserts JIFMS CCAM balances for current payee and identified case
         :param db_session: SQLAlchemy session

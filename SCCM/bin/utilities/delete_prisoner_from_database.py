@@ -10,7 +10,6 @@ import requests
 from config import config
 from data.db_session import DbSession
 from SCCM.config import config
-from SCCM.data.case_balance import CaseBalance
 from SCCM.data.case_filter import CaseFilter
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.db_session import DbSession

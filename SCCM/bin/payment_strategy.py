@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from SCCM.models.case import CaseBase
+from SCCM.models.case_schema import CaseBase
 from SCCM.bin.transaction import Transaction
 from SCCM.bin.prisoners import Prisoners
 from decimal import Decimal, ROUND_HALF_UP
@@ -95,7 +95,7 @@ class MultipleCasePaymentProcess(Strategy):
                     overpayment = False
 
                 if overpayment:
-                    case.status = 'PAID'
+                    case.comment = 'PAID'
                     overpayment = case.balance.mark_paid()
                     case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
                                                    quantize(cents, ROUND_HALF_UP))

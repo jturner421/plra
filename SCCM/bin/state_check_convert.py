@@ -23,7 +23,7 @@ from SCCM.bin.ccam_lookup import CCAMSettings
 import SCCM.bin.crud
 import SCCM.models.prisoner_schema as pSchema
 import SCCM.services.prisoner_services as ps
-
+import SCCM.services.case_services as cs
 
 
 
@@ -118,10 +118,7 @@ def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
         exit(1)
 
 
-def get_existing_cases_from_network(p):
-    print(f'Getting existing cases for {p.plra_name}')
-    p.get_prisoner_case_numbers(dc.populate_cases_filter_list())
-    return p
+
 
 
 def main():
@@ -203,13 +200,13 @@ def main():
             if not prisoner_found:
                 # retrieve cases and CCAM balances
                 p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
-                p = get_existing_cases_from_network(p)
+                p = cs.get_prisoner_case_numbers(p)
                 cases_to_skip = []
                 cases_dict = {case.ecf_case_num: cte.format_case_num(case.ecf_case_num) for case in p.cases_list}
 
                 ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
                 ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=ccam_settings,
-                                                                  name=p.lookup_name)
+                                                                  name=p.check_name)
                 ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
                 for case in p.cases_list:
                     try:
@@ -217,7 +214,13 @@ def main():
                         balance_key = cases_dict[case.ecf_case_num].split('-')[0]
                         case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
                         case.ccam_case_num = cases_dict[case.ecf_case_num]
-                        case.balance.add_ccam_balances(ccam_summary_balance.loc[balance_key].to_dict())
+                        ccam_balance = ccam_summary_balance.loc[balance_key].to_dict()
+                        case.balance.amount_assessed = Decimal(ccam_balance['Total Owed']).quantize(cents, ROUND_HALF_UP)
+                        case.balance.amount_collected = Decimal(ccam_balance['Total Collected']).quantize(cents,
+                                                                                                         ROUND_HALF_UP)
+                        case.balance.amount_owed = Decimal(ccam_balance['Total Outstanding']).quantize(cents,
+                                                                                                      ROUND_HALF_UP)
+                        # case.balance.add_ccam_balances(ccam_summary_balance.loc[balance_key].to_dict())
 
                     except KeyError:
                         cases_to_skip.append(case)
@@ -228,7 +231,7 @@ def main():
                         if case in p.cases_list:
                             p.cases_list.remove(case)
                 if party_code:
-                    p.pty_cd = party_code
+                    p.pty_code = party_code
 
             # db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
             #                         vendor_code=p.pty_cd))

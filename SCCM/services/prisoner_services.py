@@ -10,13 +10,6 @@ from fuzzywuzzy import process
 import SCCM.bin.dataframe_cleanup as dc
 import SCCM.models.prisoner_schema as pSchema
 
-# from SCCM.bin import ccam_lookup as ccam
-# from SCCM.bin import convert_to_excel as cte
-# from SCCM.data.case_transaction import CaseTransaction
-# from SCCM.data.court_cases import CourtCase
-# from SCCM.data.prisoners import Prisoner
-
-
 suffix_list = dc.populate_suffix_list()
 
 
@@ -28,19 +21,6 @@ def add_prisoner_to_db_session(network_base_dir: str, p: pSchema.PrisonerCreate)
     p.search_dir = construct_search_directory_for_prisoner(p.check_name, network_base_dir)
     p.judgment_name = get_name_ratio(p)
     p.case_search_dir = f"{p.search_dir}/{p.judgment_name}"
-
-
-
-    # get the existing cases
-
-    # insert the prisoner into the database
-    # p.create_prisoner(db_session, session, base_url)
-    # doc_num = input(f'Enter DOC Number for {p.plra_name}: ')
-    # prisoner_db = Prisoner(doc_num=int(p.doc_num), legal_name=p.check_name, judgment_name=p.check_name)
-    # db_session.add(prisoner_db)
-    # p.new_cases_list = p.cases_list
-    # p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner_db, session,
-    #                                             db_file, destination, db_backup_path, db_backup_file_name)
     return p
 
 

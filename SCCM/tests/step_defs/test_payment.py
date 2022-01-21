@@ -3,8 +3,8 @@ import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
 from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case import CaseBase
-from SCCM.models.case import Balance
+from SCCM.models.case_schema import CaseBase
+from SCCM.models.case_schema import Balance
 
 cents = Decimal('0.01')
 

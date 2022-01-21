@@ -36,7 +36,7 @@ class Prisoners:
         path to base directory on network share to match payee to prisoner
     case_search_dir : str:
         path to directory on network share to retrieve prisoner case information
-    formatted_case_num: str
+    ccam_case_num: str
         oldest active case number formatted for CCAM
     ccam balance : list
         aggregate account balance for prisoner retrieved from CCAM
@@ -108,7 +108,7 @@ class Prisoners:
         Creates path to base directory on network share to match payee to prisoner.
         Format is base_dir plus first initial of last name.
 
-        Example : '/Volumes/DC/Groups/Finance/Trust Fund/Case Files/J'
+        Example : '/Volumes/DC/Groups/Finance/Trust Fund/CaseBase Files/J'
         :param base_dir: base directory location for electronic case files specified in config.ini
         :return: search directory for input to name matching algorithm
         """
@@ -223,7 +223,7 @@ class Prisoners:
         :param filter_list: list of cases for a prisoner
         :return: oldest active case
         """
-        from SCCM.models.case import Case
+        from SCCM.models.case import CaseBase
         cases = [f.name for f in os.scandir(self.case_search_dir) if f.is_dir()]
         active_cases = cases[:]
         for case in cases:
@@ -231,7 +231,7 @@ class Prisoners:
                 active_cases.remove(case)
         active_cases.sort()
         for c in active_cases:
-            self.cases_list.append(Case(case_number=str.upper(c), status='ACTIVE', overpayment=False))
+            self.cases_list.append(CaseBase(ecf_case_num=str.upper(c), status='ACTIVE', overpayment=False))
 
         def _format_name(self):
             # TODO - Need to finish this for Excel Output
@@ -246,7 +246,7 @@ class Prisoners:
         def create_transaction(self, check_number, db_session):
             """
             Records prisoner payment in database
-            :param result: Case information for selected prisoner
+            :param result: CaseBase information for selected prisoner
             :param check_number: Check number for payment made
             :param db_session: SQLAlchemy session
             :return:
@@ -262,7 +262,7 @@ class Prisoners:
             """
             Updates case balance for prisoner, checks if case is paid off, and adds to database session for
             update
-            :param result: Case information for selected prisoner
+            :param result: CaseBase information for selected prisoner
             :param db_session: SQLAlchemy session
             """
 
@@ -284,7 +284,7 @@ class Prisoners:
         def update_pty_acct_cd(self, result, session):
             """
             Updates JIFMS account code for prisoner if not found
-            :param result: Case information for selected prisoner
+            :param result: CaseBase information for selected prisoner
             :param session:
             :return: SQLAlchemy session
             """

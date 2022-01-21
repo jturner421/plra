@@ -214,7 +214,7 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
         sheet.cell(row=rownum, column=4).value = effective_date
         sheet.cell(row=rownum, column=5).value = Decimal(p['case'].transaction.amount_paid)
         sheet.cell(row=rownum, column=6).value = deposit_num
-        sheet.cell(row=rownum, column=7).value = str.upper(p['case'].formatted_case_num)
+        sheet.cell(row=rownum, column=7).value = str.upper(p['case'].ccam_case_num)
         sheet.cell(row=rownum, column=8).value = p['case'].balance.amount_assessed
         sheet.cell(row=rownum, column=9).value = p['case'].balance.amount_collected
         sheet.cell(row=rownum, column=10).value = p['case'].balance.amount_owed
@@ -222,7 +222,7 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
         sheet.cell(row=rownum, column=4).value = effective_date
         sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].amount_paid)
         sheet.cell(row=rownum, column=6).value = deposit_num
-        sheet.cell(row=rownum, column=7).value = p['case'].case_number.upper()
+        sheet.cell(row=rownum, column=7).value = p['case'].ecf_case_num.upper()
         sheet.cell(row=rownum, column=8).value = 0
         sheet.cell(row=rownum, column=9).value = 0
         sheet.cell(row=rownum, column=10).value = 0

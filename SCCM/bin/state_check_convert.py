@@ -8,17 +8,23 @@ import argparse
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-
+from SCCM.data import session
+from SCCM.data.db_session import DbSession
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners
-from SCCM.data.db_session import DbSession
-from SCCM.data.case_balance import CaseBalance
+
+# from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.prisoners import Prisoner
 from SCCM.models.balance import Balance
 import SCCM.bin.payment_strategy as payment
 from SCCM.config.config_model import PLRASettings
 from SCCM.bin.ccam_lookup import CCAMSettings
+import SCCM.bin.crud
+import SCCM.models.prisoner_schema as pSchema
+import SCCM.services.prisoner_services as ps
+
+
 
 
 def check_sum(check_amount, total_by_name_sum):
@@ -112,27 +118,6 @@ def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
         exit(1)
 
 
-def add_prisoner_to_db(network_base_dir, p):
-    print(f'{p.check_name} not found in database. Creating.... ')
-    # Get parameters, create new user, insert into DB and load balances
-    # search for name on network share
-    p.drop_suffix_from_name(dc.populate_suffix_list())
-    p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
-    p.plra_name = p.get_name_ratio()
-    p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
-    # get the existing cases
-
-    # insert the prisoner into the database
-    # p.create_prisoner(db_session, session, base_url)
-    # doc_num = input(f'Enter DOC Number for {p.plra_name}: ')
-    # prisoner_db = Prisoner(doc_num=int(p.doc_num), legal_name=p.check_name, judgment_name=p.check_name)
-    # db_session.add(prisoner_db)
-    # p.new_cases_list = p.cases_list
-    # p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner_db, session,
-    #                                             db_file, destination, db_backup_path, db_backup_file_name)
-    return p
-
-
 def get_existing_cases_from_network(p):
     print(f'Getting existing cases for {p.plra_name}')
     p.get_prisoner_case_numbers(dc.populate_cases_filter_list())
@@ -148,6 +133,7 @@ def main():
         config_file = '../config/dev.env'
         settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
+    db_session = DbSession.factory()
     # Initialize filter lists from database
     # suffix_list = dc.populate_suffix_list(db_session)
     # cases_filter_list = dc.populate_cases_filter_list(db_session)
@@ -194,13 +180,15 @@ def main():
         # Instantiate prisoner objects
         prisoner_list = dict()
         for i, (key, value) in enumerate(prisoner_dict.items()):
-            doc_num = key
-            name = value['Name']
-            amount = Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
-            prisoner_list[i] = prisoners.Prisoners(name, doc_num, amount)
+            items = {
+                "doc_num": key,
+                "check_name": value['Name'],
+                "amount_paid": Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
+            }
+            prisoner_list[i] = pSchema.PrisonerCreate(**items)
 
         # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
-        db_session = DbSession.global_init(f"{settings.db_base_directory}{settings.db_file}")
+
         for key, p in prisoner_list.items():
             # lookup name in internal DB for existance
             ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
@@ -214,10 +202,10 @@ def main():
                 prisoner_found = False
             if not prisoner_found:
                 # retrieve cases and CCAM balances
-                p = add_prisoner_to_db(settings.network_base_directory, p)
+                p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
                 p = get_existing_cases_from_network(p)
                 cases_to_skip = []
-                cases_dict = {case.case_number: cte.format_case_num(case.case_number) for case in p.cases_list}
+                cases_dict = {case.ecf_case_num: cte.format_case_num(case.ecf_case_num) for case in p.cases_list}
 
                 ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
                 ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=ccam_settings,
@@ -226,9 +214,9 @@ def main():
                 for case in p.cases_list:
                     try:
                         case.balance = Balance()
-                        balance_key = cases_dict[case.case_number].split('-')[0]
+                        balance_key = cases_dict[case.ecf_case_num].split('-')[0]
                         case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
-                        case.formatted_case_num = cases_dict[case.case_number]
+                        case.ccam_case_num = cases_dict[case.ecf_case_num]
                         case.balance.add_ccam_balances(ccam_summary_balance.loc[balance_key].to_dict())
 
                     except KeyError:

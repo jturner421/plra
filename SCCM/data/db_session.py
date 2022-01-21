@@ -4,6 +4,7 @@ from SCCM.data.modelbase import SqlAlchemyBase
 from pathlib import Path
 # noinspection PyUnresolvedReferences
 import SCCM.data.__all_models
+from SCCM.config.config_model import PLRASettings
 
 
 class DbSession:
@@ -26,10 +27,13 @@ class DbSession:
         print(f'Connecting to {conn_str}')
 
         # engine = sqlalchemy.create_engine(conn_str, echo=False)  # set echo=True for debugging
-        engine = sqlalchemy.create_engine(conn_str, connect_args={'check_same_thread': False}, echo=False)  # set echo=True for debugging
+        engine = sqlalchemy.create_engine(conn_str, connect_args={'check_same_thread': False},
+                                          echo=False)  # set echo=True for debugging
         DbSession.engine = engine
         DbSession.factory = sqlalchemy.orm.sessionmaker(bind=engine)
 
         SqlAlchemyBase.metadata.create_all(engine)
         db_session = DbSession.factory()
         return db_session
+
+

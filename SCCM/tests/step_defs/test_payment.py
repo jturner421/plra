@@ -3,7 +3,7 @@ import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
 from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case import Case
+from SCCM.models.case import CaseBase
 from SCCM.models.case import Balance
 
 cents = Decimal('0.01')
@@ -19,8 +19,8 @@ def test_single_payment():
 @given("I'm a prisoner with an active case", target_fixture='prisoner')
 def get_prisoner():
     p = Prisoners('Wayne Hart', 1234, Decimal(172.87).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
-    p.cases_list[0].formatted_case_num = 'DWIW21CV000012'
+    p.cases_list.append(CaseBase(ecf_case_num='21-CV-12', status='ACTIVE', overpayment=False))
+    p.cases_list[0].ccam_case_num = 'DWIW21CV000012'
     return p
 
 

@@ -16,6 +16,6 @@ class Alias(SqlAlchemyBase):
     prisoner_name = relationship("Prisoner", back_populates='aliases')
 
     def __repr__(self):
-        return '<Case Number {}>'.format(self.case_num)
+        return '<CaseBase Number {}>'.format(self.case_num)
 
 

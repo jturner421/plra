@@ -3,7 +3,7 @@ import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
 from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case import Case
+from SCCM.models.case import CaseBase
 from SCCM.models.case import Balance
 
 cents = Decimal('0.01')
@@ -21,10 +21,10 @@ def test_multiple_cases_with_overpayment():
 @given("I'm a prisoner with multiple active cases", target_fixture='prisoner')
 def get_prisoner():
     p = Prisoners('Bob Smith', 1234, Decimal(178.32).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(Case(case_number='16-CV-345', status='ACTIVE', overpayment=False))
-    p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
-    p.cases_list[0].formatted_case_num = 'DWIW16CV000345'
-    p.cases_list[1].formatted_case_num = 'DWIW21CV000012'
+    p.cases_list.append(CaseBase(ecf_case_num='16-CV-345', status='ACTIVE', overpayment=False))
+    p.cases_list.append(CaseBase(ecf_case_num='21-CV-12', status='ACTIVE', overpayment=False))
+    p.cases_list[0].ccam_case_num = 'DWIW16CV000345'
+    p.cases_list[1].ccam_case_num = 'DWIW21CV000012'
     return p
 
 

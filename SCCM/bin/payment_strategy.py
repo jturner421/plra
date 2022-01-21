@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from SCCM.models.case import Case
+from SCCM.models.case import CaseBase
 from SCCM.bin.transaction import Transaction
 from SCCM.bin.prisoners import Prisoners
 from decimal import Decimal, ROUND_HALF_UP
@@ -112,7 +112,7 @@ class MultipleCasePaymentProcess(Strategy):
 
 class OverPaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
-        # p.cases_list.append(Case('No Active Cases', 'PAID', True))
+        # p.cases_list.append(CaseBase('No Active Cases', 'PAID', True))
         p.overpayment = True
         p.refund = p.amount_paid
         return p

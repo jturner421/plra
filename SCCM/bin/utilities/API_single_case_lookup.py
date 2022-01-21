@@ -29,18 +29,18 @@ def main():
     cert_path = prod_vars['CLIENT_CERT_PATH']
     session.verify = cert_path
 
-    case_number = input('Enter Case Number (yy-cv-number-xxx(if multi-defendant case):  ')
+    case_number = input('Enter CaseBase Number (yy-cv-number-xxx(if multi-defendant case):  ')
     formatted_case_num = format_case_num(str.upper(case_number))
     response = session.get(
         base_url,
         params={'caseNumberList': formatted_case_num},
 
     )
-    # balance = get_ccam_account_information(formatted_case_num, session, base_url)
+    # balance = get_ccam_account_information(ccam_case_num, session, base_url)
     balance = response.json()
     if len(balance['data']) >> 0:
         for k, v in enumerate(balance['data']):
-            print(f"Fund {v['debt_typ']}, Case #: {v['case_num']}, Account Code: {v['prty_cd']}, "
+            print(f"Fund {v['debt_typ']}, CaseBase #: {v['case_num']}, Account Code: {v['prty_cd']}, "
                   f"Party Num: {v['prty_num']},  Name: {v['prty_nm']}, "
                   f" Amount Owed: {v['prnc_owed']}, Amount Collected: {v['prnc_clld']}, "
                   f"Amount Outstanding {v['totl_ostg']}")

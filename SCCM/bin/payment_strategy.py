@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from SCCM.models.case_schema import CaseBase
-from SCCM.bin.transaction import Transaction
+import SCCM.models.transaction_schema as ts
 from SCCM.bin.prisoners import Prisoners
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -68,13 +68,16 @@ class SingleCasePaymentProcess(Strategy):
         if case.balance.amount_owed < 0:
             overpayment = True
         if overpayment:
-            case.status = 'PAID'
+            case.comment = 'PAID'
             overpayment = case.balance.mark_paid()
-            case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
-                                           quantize(cents, ROUND_HALF_UP))
+            case.transaction = ts.TransactionCreate(
+                check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
+                    quantize(cents, ROUND_HALF_UP))
             p.refund = overpayment
         else:
-            case.transaction = Transaction(check_number, p.amount_paid)
+            case.transaction = ts.TransactionCreate(
+                check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
+                    quantize(cents, ROUND_HALF_UP))
         return p
 
 
@@ -97,13 +100,16 @@ class MultipleCasePaymentProcess(Strategy):
                 if overpayment:
                     case.comment = 'PAID'
                     overpayment = case.balance.mark_paid()
-                    case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
-                                                   quantize(cents, ROUND_HALF_UP))
+                    case.transaction = ts.TransactionCreate(
+                        check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
+                            quantize(cents, ROUND_HALF_UP))
                     p.amount_paid = overpayment
                     p.refund = overpayment
                     number_of_cases_for_prisoner -= 1
                 else:
-                    case.transaction = Transaction(check_number, p.amount_paid)
+                    case.transaction = ts.TransactionCreate(
+                        check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
+                            quantize(cents, ROUND_HALF_UP))
                     all_payments_applied = True
                     p.refund = 0
                     break

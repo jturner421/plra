@@ -4,8 +4,9 @@ import re
 
 from SCCM.data.court_cases import CourtCase
 from SCCM.models.balance import Balance
+import SCCM.models.transaction_schema as ts
 # from SCCM.models.person import PrisonerModel
-from SCCM.bin.transaction import Transaction
+
 from SCCM.data.db_session import DbSession
 from pydantic import BaseModel, ValidationError, validator, constr
 
@@ -25,7 +26,7 @@ class CaseCreate(CaseBase):
     acct_cd: Optional[str] = None
     ccam_case_num: Optional[str] = None
     balance: Optional[Balance] = None
-
+    transaction: Optional[ts.TransactionModel] = None
 
 class CaseModel(CaseBase):
     id: int
@@ -34,7 +35,7 @@ class CaseModel(CaseBase):
     amount_assessed: Decimal
     amount_collected: Decimal
     amount_owed: Decimal
-    transaction: Optional[Transaction] = None
+    transaction: Optional[ts.TransactionModel] = None
 
     # prisoner: PrisonerModel
 

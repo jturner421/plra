@@ -2,8 +2,8 @@ from pytest_bdd import scenario, scenarios, given, when, then, parsers
 import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
-from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case_schema import CaseBase
+from SCCM.models.prisoner_schema import PrisonerCreate
+from SCCM.models.case_schema import CaseCreate
 from SCCM.models.case_schema import Balance
 
 cents = Decimal('0.01')
@@ -18,15 +18,26 @@ def test_single_payment():
 
 @given("I'm a prisoner with an active case", target_fixture='prisoner')
 def get_prisoner():
-    p = Prisoners('Wayne Hart', 1234, Decimal(172.87).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(CaseBase(ecf_case_num='21-CV-12', status='ACTIVE', overpayment=False))
+    items = {"doc_num": 1234,
+             "check_name": 'Wayne Hart',
+             "amount_paid": Decimal(172.87).quantize(cents, ROUND_HALF_UP)
+             }
+    p = PrisonerCreate(**items)
+    p.cases_list.append(CaseCreate(
+        ecf_case_num='21-CV-12',
+        comment='ACTIVE')
+    )
     p.cases_list[0].ccam_case_num = 'DWIW21CV000012'
     return p
 
 
 @given("I'm a prisoner with no active cases", target_fixture='prisoner_nocase')
 def get_prisoner_with_no_case():
-    p = Prisoners('Wayne Hart', 1234, Decimal(50.00).quantize(cents, ROUND_HALF_UP))
+    items = {"doc_num": 1234,
+             "check_name": 'Wayne Hart',
+             "amount_paid": Decimal(50.00).quantize(cents, ROUND_HALF_UP)
+             }
+    p = PrisonerCreate(**items)
     return p
 
 
@@ -61,10 +72,9 @@ def make_normal_payment(prisoner):
 
 @then("I should have a balance of $34.31")
 def check_for_normal_payment(prisoner):
-    assert prisoner.cases_list[0].overpayment is False
     assert prisoner.cases_list[0].balance.amount_owed == Decimal(34.31).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[0].balance.amount_collected == Decimal(770.690).quantize(cents, ROUND_HALF_UP)
-    assert not hasattr(prisoner, 'refund')
+    assert prisoner.refund is None
 
 
 @when("I make a payment in the amount of $50.00")

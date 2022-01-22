@@ -17,6 +17,7 @@ class PrisonerCreate(PrisonerBase):
     search_dir: Optional[str] = None
     case_search_dir: Optional[str] = None
     overpayment: str = None
+    refund: Optional[Decimal] = None
 
 
 class PrisonerModel(PrisonerBase):

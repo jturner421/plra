@@ -2,10 +2,9 @@ from pytest_bdd import scenario, scenarios, given, when, then, parsers
 import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
-from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case_schema import CaseBase
+from SCCM.models.prisoner_schema import PrisonerCreate
+from SCCM.models.case_schema import CaseCreate
 from SCCM.models.case_schema import Balance
-
 cents = Decimal('0.01')
 
 
@@ -20,11 +19,23 @@ def test_multiple_cases_with_overpayment():
 
 @given("I'm a prisoner with multiple active cases", target_fixture='prisoner')
 def get_prisoner():
-    p = Prisoners('Bob Smith', 1234, Decimal(178.32).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(CaseBase(ecf_case_num='16-CV-345', status='ACTIVE', overpayment=False))
-    p.cases_list.append(CaseBase(ecf_case_num='21-CV-12', status='ACTIVE', overpayment=False))
+    items = {"doc_num": 1234,
+             "check_name": 'Bob Smith',
+             "amount_paid": Decimal(178.32).quantize(cents, ROUND_HALF_UP)
+             }
+    p = PrisonerCreate(**items)
+    p.cases_list.append(CaseCreate(
+        ecf_case_num='16-CV-345',
+        comment='ACTIVE')
+    )
+    p.cases_list.append(CaseCreate(
+        ecf_case_num='21-CV-12',
+        comment='ACTIVE')
+    )
+
     p.cases_list[0].ccam_case_num = 'DWIW16CV000345'
     p.cases_list[1].ccam_case_num = 'DWIW21CV000012'
+
     return p
 
 
@@ -47,10 +58,9 @@ def make_payment_that_results_in_overpayment(prisoner):
 @then("I should have a balance of $332.23 in my newest case")
 def check_for_balance_in_newest_case(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == 0
-    assert prisoner.cases_list[0].status == 'PAID'
+    assert prisoner.cases_list[0].comment == 'PAID'
     assert prisoner.cases_list[0].balance.amount_collected == 805
-    assert prisoner.cases_list[1].overpayment is False
     assert prisoner.cases_list[1].balance.amount_owed == Decimal(332.33).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[1].status == 'ACTIVE'
+    assert prisoner.cases_list[1].comment == 'ACTIVE'
     assert prisoner.cases_list[1].balance.amount_collected == Decimal(17.67).quantize(cents, ROUND_HALF_UP)
     assert prisoner.refund == 0.00

@@ -16,7 +16,7 @@ def main():
     session = DbSession.factory()
     suffix_list = ('jr', 'sr', 'ii', 'iii', 'iv', 'v')
     filter_list = ('PAID', 'CLOSED', 'DISMISSED', 'LOOK AT THIS', 'look at this', 'OVP', '.PDF', '.pdf', 'Habeas',
-                   "HABEAS", 'Transfer', '_aka', 'Initial Partial Only', 'Paids%', 'TERMINATED')
+                   "HABEAS", 'Transfer', '_aka', 'Initial Partial Only', 'Paids%', 'TERMINATED', 'WITHDREW')
 
     for s in suffix_list:
         suffix = SuffixTable(suffix_name=s)

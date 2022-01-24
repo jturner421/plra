@@ -241,6 +241,6 @@ def _overpayment_row(p, rownum, sheet):
     sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
     sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
     sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
-    sheet.cell(row=rownum, column=7).value = 'No Active Cases'
+    sheet.cell(row=rownum, column=7).value = p['prisoner'].overpayment[1]
     sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].refund)
     return sheet.cell

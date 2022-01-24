@@ -74,6 +74,7 @@ class SingleCasePaymentProcess(Strategy):
                 check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
                     quantize(cents, ROUND_HALF_UP))
             p.refund = overpayment
+            p.overpayment = (True, case.ecf_case_num)
         else:
             case.transaction = ts.TransactionCreate(
                 check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).

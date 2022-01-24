@@ -8,23 +8,21 @@ import argparse
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from SCCM.data import initiate_global_db_session
+import SCCM.data.initiate_global_db_session
 from SCCM.data.db_session import DbSession
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
-    get_files as gf, prisoners
+    get_files as gf
 
-# from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
 from SCCM.data.prisoners import Prisoner
 from SCCM.models.balance import Balance
 import SCCM.bin.payment_strategy as payment
 from SCCM.config.config_model import PLRASettings
 from SCCM.bin.ccam_lookup import CCAMSettings
-import SCCM.bin.crud
 import SCCM.models.prisoner_schema as pSchema
 import SCCM.services.prisoner_services as ps
 import SCCM.services.case_services as cs
-
+from SCCM.services.payment_services import prepare_ccam_upload_transactions
 
 
 def check_sum(check_amount, total_by_name_sum):
@@ -131,9 +129,7 @@ def main():
         settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
     db_session = DbSession.factory()
-    # Initialize filter lists from database
-    # suffix_list = dc.populate_suffix_list(db_session)
-    # cases_filter_list = dc.populate_cases_filter_list(db_session)
+
     # Ask user to choose one or more files for processing
     filenames = gf.choose_files_for_import()
 
@@ -250,15 +246,7 @@ def main():
                 context = payment.Context(payment.SingleCasePaymentProcess())
                 p = context.process_payment(p, int(check_number))
 
-    # Save excel file for upload to JIFMS
-    payments = []
-    for key, p in prisoner_list.items():
-        if p.overpayment:
-            payments.append({'prisoner': p})
-        else:
-            for case in p.cases_list:
-                if case.transaction or case.overpayment:
-                    payments.append({'prisoner': p, 'case': case})
+    payments = prepare_ccam_upload_transactions(prisoner_list)
 
     cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
 

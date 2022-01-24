@@ -74,7 +74,13 @@ class SingleCasePaymentProcess(Strategy):
                 check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
                     quantize(cents, ROUND_HALF_UP))
             p.refund = overpayment
-            p.overpayment = (True, case.ecf_case_num)
+            p.overpayment = {'overpayment': True,
+                             'ccam_case_num': case.ccam_case_num,
+                             'assessed': case.balance.amount_assessed,
+                             'collected': case.balance.amount_collected,
+                             'outstanding': case.balance.amount_owed,
+                             'transaction amount': -p.refund
+                             }
         else:
             case.transaction = ts.TransactionCreate(
                 check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
@@ -119,7 +125,6 @@ class MultipleCasePaymentProcess(Strategy):
 
 class OverPaymentProcess(Strategy):
     def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
-        # p.cases_list.append(CaseBase('No Active Cases', 'PAID', True))
-        p.overpayment = True
+        p.overpayment = (True, p.cases_list[0].ccam_case_num)
         p.refund = p.amount_paid
         return p

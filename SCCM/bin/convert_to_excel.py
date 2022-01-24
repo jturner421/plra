@@ -186,10 +186,11 @@ def write_rows_to_output_file(file, payee_list, deposit_num, effective_date):
     sheet = wb.get_sheet_by_name('PLRA')
     rownum = 2  # skip first row for header
     for p in payee_list:
-        if p['prisoner'].overpayment:
-            sheet.cell = _overpayment_row(p, rownum, sheet)
-        else:
+        # Transaction has 2 dictionary keys: Prisoner and Case
+        if len(p) ==2:
             sheet.cell = _transaction_row(deposit_num, effective_date, p, rownum, sheet)
+        else:
+            sheet.cell = _overpayment_row(deposit_num, effective_date, p, rownum, sheet)
         rownum += 1
 
     wb.save(file)
@@ -235,12 +236,18 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
     return sheet.cell
 
 
-def _overpayment_row(p, rownum, sheet):
+def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
     # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
     # checks for the same day
     sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
     sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
     sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
-    sheet.cell(row=rownum, column=7).value = p['prisoner'].overpayment[1]
-    sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].refund)
+    sheet.cell(row=rownum, column=4).value = effective_date
+    sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].overpayment['transaction amount'])
+    sheet.cell(row=rownum, column=6).value = deposit_num
+    sheet.cell(row=rownum, column=7).value = p['prisoner'].overpayment['ccam_case_num']
+    # sheet.cell(row=rownum, column=8).value = p['prisoner'].overpayment['assessed']
+    # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['collected']
+    # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['outstanding']
+    sheet.cell(row=rownum, column=11).value = Decimal(p['prisoner'].refund)
     return sheet.cell

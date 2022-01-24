@@ -8,7 +8,7 @@ import argparse
 import pandas as pd
 from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
-from SCCM.data import session
+from SCCM.data import initiate_global_db_session
 from SCCM.data.db_session import DbSession
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf, prisoners

@@ -171,18 +171,19 @@ def main():
         prod_db_backup(original, destination)
 
         # Instantiate prisoner objects
-        prisoner_list = dict()
+        prisoner_list = []
         for i, (key, value) in enumerate(prisoner_dict.items()):
             items = {
                 "doc_num": key,
                 "check_name": value['Name'],
                 "amount_paid": Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
             }
-            prisoner_list[i] = pSchema.PrisonerCreate(**items)
+            # prisoner_list[i] = pSchema.PrisonerCreate(**items)
+            prisoner_list.append(pSchema.PrisonerCreate(**items))
 
         # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
 
-        for key, p in prisoner_list.items():
+        for p in prisoner_list:
             # lookup name in internal DB for existance
             ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
             try:

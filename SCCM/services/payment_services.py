@@ -9,7 +9,7 @@ cents = Decimal('0.01')
 def prepare_ccam_upload_transactions(prisoner_list):
     # Save excel file for upload to JIFMS
     payments = []
-    for key, p in prisoner_list.items():
+    for p in prisoner_list:
         if p.overpayment:
             for case in p.cases_list:
                 if case.transaction:

@@ -1,5 +1,5 @@
 import os
-
+import pydantic.errors
 import SCCM.bin.dataframe_cleanup as dc
 import SCCM.models.case_schema as cs
 
@@ -21,11 +21,23 @@ def get_prisoner_case_numbers(p):
             active_cases.remove(case)
     active_cases.sort()
     for c in active_cases:
-        p.cases_list.append(cs.CaseCreate(
-            ecf_case_num=str.upper(c),
-            comment='ACTIVE')
-        )
+        try:
+            p.cases_list.append(cs.CaseCreate(
+                ecf_case_num=str.upper(c),
+                comment='ACTIVE')
+            )
+
+        except pydantic.ValidationError:
+            str_split = c.split('-')
+            case_party_number = str_split[-1]
+            ecf_case_num = "-".join(str_split[0:3])
+            p.cases_list.append(cs.CaseCreate(
+                ecf_case_num=str.upper(ecf_case_num),
+                comment='ACTIVE',
+                case_party_number=case_party_number
+            ))
     return p
+
 
 def _format_name(self):
     # TODO - Need to finish this for Excel Output

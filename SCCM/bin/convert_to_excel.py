@@ -52,21 +52,30 @@ def format_case_num(case_num):
     :param case_num: prisoner case number
     :return: CCAM formatted case number
     """
+    case_num_split = str.split(case_num.ecf_case_num, '-')
     # Check if multi-defendant case
-    try:
-        case_num_split = str.split(case_num, '-')
-        if len(case_num_split) > 3:
-            formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-{case_num_split[3]}"
-            return formatted_case_num
-        else:
-            formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-001"
-            return formatted_case_num
-    except IndexError:
-        pass
 
-    except TypeError:
-        print('No valid case found')
-        pass
+    if case_num.case_party_number:
+        formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-{case_num.case_party_number}"
+        return formatted_case_num
+    else:
+        formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-001"
+        return formatted_case_num
+
+    # try:
+    #     case_num_split = str.split(case_num, '-')
+    #     if len(case_num_split) > 3:
+    #         formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-{case_num_split[3]}"
+    #         return formatted_case_num
+    #     else:
+    #         formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-001"
+    #         return formatted_case_num
+    # except IndexError:
+    #     pass
+    #
+    # except TypeError:
+    #     print('No valid case found')
+    #     pass
 
 
 def create_output_file(check_date, check_num, output_path):

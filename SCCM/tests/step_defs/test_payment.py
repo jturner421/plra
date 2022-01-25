@@ -59,6 +59,8 @@ def check_for_overpayment(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == 0
     assert prisoner.cases_list[0].balance.amount_collected == 805
     assert prisoner.refund == Decimal(12.22).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(160.65).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.check_number == 57686
 
 
 @when("I make a payment in the amount of $126.34")
@@ -75,6 +77,8 @@ def check_for_normal_payment(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == Decimal(34.31).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[0].balance.amount_collected == Decimal(770.690).quantize(cents, ROUND_HALF_UP)
     assert prisoner.refund is None
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(126.34).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.check_number == 57686
 
 
 @when("I make a payment in the amount of $50.00")

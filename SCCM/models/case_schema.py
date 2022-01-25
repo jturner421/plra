@@ -25,8 +25,10 @@ class CaseBase(BaseModel):
 class CaseCreate(CaseBase):
     acct_cd: Optional[str] = None
     ccam_case_num: Optional[str] = None
+    case_party_number: Optional[str] = None
     balance: Optional[Balance] = None
     transaction: Optional[ts.TransactionModel] = None
+
 
 class CaseModel(CaseBase):
     id: int

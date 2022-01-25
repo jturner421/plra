@@ -199,7 +199,7 @@ def main():
                 p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
                 p = cs.get_prisoner_case_numbers(p)
                 cases_to_skip = []
-                cases_dict = {case.ecf_case_num: cte.format_case_num(case.ecf_case_num) for case in p.cases_list}
+                cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in p.cases_list}
 
                 ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
                 ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=ccam_settings,

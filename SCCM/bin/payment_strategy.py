@@ -70,7 +70,7 @@ class SingleCasePaymentProcess(Strategy):
         if case.balance.amount_owed < 0:
             overpayment = True
         if overpayment:
-            payment.prepare_overpayment(p, case, check_number)
+            payment.prepare_overpayment_single(p, case, check_number)
         else:
             payment.prepare_payment(p, case, check_number)
         return p
@@ -103,7 +103,7 @@ class MultipleCasePaymentProcess(Strategy):
                     p.overpayment = None
 
                 if overpayment:
-                    payment.prepare_overpayment(p, case, check_number)
+                    payment.prepare_overpayment_multiple(p, case, check_number)
                     number_of_cases_for_prisoner -= 1
                 else:
                     payment.prepare_payment(p, case, check_number)

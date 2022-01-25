@@ -64,3 +64,6 @@ def check_for_balance_in_cases(prisoner):
     assert prisoner.cases_list[1].comment == 'ACTIVE'
     assert prisoner.cases_list[1].balance.amount_collected == Decimal(0.00).quantize(cents, ROUND_HALF_UP)
     assert prisoner.refund == 0
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(4.59).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.check_number == 57686
+    assert prisoner.cases_list[1].transaction is None

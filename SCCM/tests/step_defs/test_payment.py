@@ -19,13 +19,13 @@ def test_single_payment():
 @given("I'm a prisoner with an active case", target_fixture='prisoner')
 def get_prisoner():
     items = {"doc_num": 1234,
-             "check_name": 'Wayne Hart',
+             "legal_name": 'Wayne Hart',
              "amount_paid": Decimal(172.87).quantize(cents, ROUND_HALF_UP)
              }
     p = PrisonerCreate(**items)
     p.cases_list.append(CaseCreate(
         ecf_case_num='21-CV-12',
-        comment='ACTIVE')
+        case_comment='ACTIVE')
     )
     p.cases_list[0].ccam_case_num = 'DWIW21CV000012'
     return p
@@ -34,7 +34,7 @@ def get_prisoner():
 @given("I'm a prisoner with no active cases", target_fixture='prisoner_nocase')
 def get_prisoner_with_no_case():
     items = {"doc_num": 1234,
-             "check_name": 'Wayne Hart',
+             "legal_name": 'Wayne Hart',
              "amount_paid": Decimal(50.00).quantize(cents, ROUND_HALF_UP)
              }
     p = PrisonerCreate(**items)

@@ -23,7 +23,7 @@ def prepare_ccam_upload_transactions(prisoner_list):
 
 
 def prepare_overpayment_multiple(p: PrisonerCreate, case: CaseCreate, check_number: int) -> PrisonerCreate:
-    case.comment = 'PAID'
+    case.case_comment = 'PAID'
     overpayment = case.balance.mark_paid()
     case.transaction = TransactionCreate(
         check_number=check_number, amount_paid=p.amount_paid - Decimal(overpayment).
@@ -41,7 +41,7 @@ def prepare_overpayment_multiple(p: PrisonerCreate, case: CaseCreate, check_numb
 
 
 def prepare_overpayment_single(p: PrisonerCreate, case: CaseCreate, check_number: int) -> PrisonerCreate:
-    case.comment = 'PAID'
+    case.case_comment = 'PAID'
     overpayment = case.balance.mark_paid()
     p.refund = overpayment
     p.overpayment = {'overpayment': True,

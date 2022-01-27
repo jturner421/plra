@@ -20,17 +20,17 @@ def test_overpayment():
 @given("I'm a prisoner with multiple cases", target_fixture='prisoner')
 def get_prisoner():
     items = {"doc_num": 1234,
-             "check_name": 'Bob Smith',
+             "legal_name": 'Bob Smith',
              "amount_paid": Decimal(525.00).quantize(cents, ROUND_HALF_UP)
              }
     p = PrisonerCreate(**items)
     p.cases_list.append(CaseCreate(
         ecf_case_num='16-CV-345',
-        comment='ACTIVE')
+        case_comment='ACTIVE')
     )
     p.cases_list.append(CaseCreate(
         ecf_case_num='21-CV-12',
-        comment='ACTIVE')
+        case_comment='ACTIVE')
     )
 
     p.cases_list[0].ccam_case_num = 'DWIW16CV000345'
@@ -58,10 +58,10 @@ def make_payment_that_results_in_overpayment(prisoner):
 @then("I should have an overpayment of $14.35")
 def check_for_overpayment_multiple(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == 0
-    assert prisoner.cases_list[0].comment == 'PAID'
+    assert prisoner.cases_list[0].case_comment == 'PAID'
     assert prisoner.cases_list[0].balance.amount_collected == 805
     assert prisoner.cases_list[0].transaction.amount_paid == Decimal(160.65).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[1].balance.amount_collected == Decimal(350.00).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[1].transaction.amount_paid == Decimal(350.00).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[1].comment == 'PAID'
+    assert prisoner.cases_list[1].case_comment == 'PAID'
     assert prisoner.refund == Decimal(14.35).quantize(cents, ROUND_HALF_UP)

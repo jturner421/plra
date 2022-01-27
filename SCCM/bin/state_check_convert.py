@@ -117,7 +117,6 @@ def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
         exit(1)
 
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", help="Enter mode [dev,test,prod] for execution")
@@ -174,22 +173,35 @@ def main():
         for i, (key, value) in enumerate(prisoner_dict.items()):
             items = {
                 "doc_num": key,
-                "check_name": value['Name'],
+                "legal_name": value['Name'],
                 "amount_paid": Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
             }
             # prisoner_list[i] = pSchema.PrisonerCreate(**items)
             prisoner_list.append(pSchema.PrisonerCreate(**items))
 
         # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
-
-        for p in prisoner_list:
+        db_prisoner_list = []
+        for i, p in enumerate(prisoner_list):
             # lookup name in internal DB for existance
             ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
             try:
-                stmt = select(Prisoner).filter_by(doc_num=int(p.doc_num))
-                prisoner = db_session.execute(stmt).scalar_one()
-                db_session.add(prisoner)
-                prisoner_found = True
+                # stmt = select(Prisoner).filter_by(doc_num=int(p.doc_num))
+                # stmt = select(Prisoner).where(Prisoner.doc_num == p.doc_num)
+                # prisoner = db_session.execute(stmt).scalar_one()
+                amount_paid = p.amount_paid
+                prisonerOrm = crud.get_prisoner(db_session, p.doc_num)
+                db_prisoner_list.append(prisonerOrm)
+                p = pSchema.PrisonerModel.from_orm(prisonerOrm)
+                p.amount_paid = amount_paid
+
+                for case in p.cases_list:
+                    case.balance = Balance()
+                    case.balance.amount_assessed = Decimal(case.amount_assessed.quantize(cents, ROUND_HALF_UP))
+                    case.balance.amount_collected = Decimal(case.amount_collected.quantize(cents, ROUND_HALF_UP))
+                    case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
+
+                    prisoner_found = True
+                prisoner_list[i] = p
 
             except NoResultFound:
                 prisoner_found = False
@@ -202,7 +214,7 @@ def main():
 
                 ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
                 ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=ccam_settings,
-                                                                  name=p.check_name)
+                                                                  name=p.legal_name)
                 ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
                 for case in p.cases_list:
                     try:
@@ -211,11 +223,12 @@ def main():
                         case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
                         case.ccam_case_num = cases_dict[case.ecf_case_num]
                         ccam_balance = ccam_summary_balance.loc[balance_key].to_dict()
-                        case.balance.amount_assessed = Decimal(ccam_balance['Total Owed']).quantize(cents, ROUND_HALF_UP)
+                        case.balance.amount_assessed = Decimal(ccam_balance['Total Owed']).quantize(cents,
+                                                                                                    ROUND_HALF_UP)
                         case.balance.amount_collected = Decimal(ccam_balance['Total Collected']).quantize(cents,
-                                                                                                         ROUND_HALF_UP)
+                                                                                                          ROUND_HALF_UP)
                         case.balance.amount_owed = Decimal(ccam_balance['Total Outstanding']).quantize(cents,
-                                                                                                      ROUND_HALF_UP)
+                                                                                                       ROUND_HALF_UP)
                         # case.balance.add_ccam_balances(ccam_summary_balance.loc[balance_key].to_dict())
 
                     except KeyError:
@@ -227,9 +240,9 @@ def main():
                         if case in p.cases_list:
                             p.cases_list.remove(case)
                 if party_code:
-                    p.pty_code = party_code
+                    p.vendor_code = party_code
 
-            # db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.check_name,
+            # db_session.add(Prisoner(doc_num=p.doc_num, judgment_name=p.plra_name, legal_name=p.legal_name,
             #                         vendor_code=p.pty_cd))
 
             # Process Payments and find overpayments
@@ -253,10 +266,14 @@ def main():
     # add prisoners to database
 
     for p in prisoner_list:
-        db_prisoner = crud.create_prisoner(db_session, p)
-        crud.add_cases_for_prisoner(db_session,db_prisoner,p)
+        if p.exists:
+            new_transactions = [case for case in p.cases_list if case.transaction]
+            for t in new_transactions:
+                crud.update_case_balances(db_session, t, db_prisoner_list)
+        else:
+            db_prisoner = crud.create_prisoner(db_session, p)
+            crud.add_cases_for_prisoner(db_session, db_prisoner, p)
     db_session.commit()
-
 
 
 if __name__ == '__main__':

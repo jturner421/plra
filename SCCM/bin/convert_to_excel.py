@@ -199,13 +199,13 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
     sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
     # Check length of name to fit within CCAM batch upload constraints
     try:
-        if len(p['prisoner'].check_name) <= 20:
-            sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
+        if len(p['prisoner'].legal_name) <= 20:
+            sheet.cell(row=rownum, column=3).value = p['prisoner'].legal_name
         else:
-            shortened_name = get_shortened_name(p['prisoner'].check_name)
+            shortened_name = get_shortened_name(p['prisoner'].legal_name)
             sheet.cell(row=rownum, column=3).value = shortened_name
     except TypeError as error:
-        print(f'{p.check_name} threw {error}')
+        print(f'{p.legal_name} threw {error}')
     try:
         sheet.cell(row=rownum, column=4).value = effective_date
         sheet.cell(row=rownum, column=5).value = Decimal(p['case'].transaction.amount_paid)
@@ -236,7 +236,7 @@ def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
     # checks for the same day
     sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
     sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
-    sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
+    sheet.cell(row=rownum, column=3).value = p['prisoner'].legal_name
     sheet.cell(row=rownum, column=4).value = effective_date
     sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].overpayment['transaction amount'])
     sheet.cell(row=rownum, column=6).value = deposit_num

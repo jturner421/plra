@@ -15,7 +15,7 @@ def main():
     try:
         case = CaseCreate(
             ecf_case_num=str.upper(case_number),
-            comment='ACTIVE')
+            case_comment='ACTIVE')
 
     except pydantic.ValidationError:
         str_split = case_number.split('-')
@@ -23,7 +23,7 @@ def main():
         ecf_case_num = "-".join(str_split[0:3])
         case = CaseCreate(
             ecf_case_num=str.upper(ecf_case_num),
-            comment='ACTIVE',
+            case_comment='ACTIVE',
             case_party_number=case_party_number
         )
     formatted_case_num = format_case_num(case)

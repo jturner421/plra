@@ -12,7 +12,7 @@ def get_prisoner_case_numbers(p):
 
     :return: oldest active case
     """
-    print(f'Getting existing cases for {p.check_name}')
+    print(f'Getting existing cases for {p.legal_name}')
 
     cases = [f.name for f in os.scandir(p.case_search_dir) if f.is_dir()]
     active_cases = cases[:]
@@ -24,7 +24,7 @@ def get_prisoner_case_numbers(p):
         try:
             p.cases_list.append(cs.CaseCreate(
                 ecf_case_num=str.upper(c),
-                comment='ACTIVE')
+                case_comment='ACTIVE')
             )
 
         except pydantic.ValidationError:
@@ -33,7 +33,7 @@ def get_prisoner_case_numbers(p):
             ecf_case_num = "-".join(str_split[0:3])
             p.cases_list.append(cs.CaseCreate(
                 ecf_case_num=str.upper(ecf_case_num),
-                comment='ACTIVE',
+                case_comment='ACTIVE',
                 case_party_number=case_party_number
             ))
     return p

@@ -251,7 +251,7 @@ class Prisoners:
             :param db_session: SQLAlchemy session
             :return:
             """
-            print(f'Creating transaction for {self.check_name}')
+            print(f'Creating transaction for {self.legal_name}')
 
             self.current_case.case_transactions.append(
                 CaseTransaction(court_case_id=self.current_case.id, check_number=check_number, amount_paid=self.amount))
@@ -266,7 +266,7 @@ class Prisoners:
             :param db_session: SQLAlchemy session
             """
 
-            print(f'Updating case balances for {self.check_name}')
+            print(f'Updating case balances for {self.legal_name}')
 
             self.current_case.case_balance[0].amount_owed = self.current_case.case_balance[0].amount_owed - self.amount
 

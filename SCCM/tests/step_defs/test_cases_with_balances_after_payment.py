@@ -21,17 +21,17 @@ def test_multiple_cases_for_payment():
 @given("I'm a prisoner with multiple unpaid active cases", target_fixture='prisoner')
 def get_prisoner_cases():
     items = {"doc_num": 1234,
-             "check_name": 'Bob Smith',
+             "legal_name": 'Bob Smith',
              "amount_paid": Decimal(4.59).quantize(cents, ROUND_HALF_UP)
              }
     p = PrisonerCreate(**items)
     p.cases_list.append(CaseCreate(
         ecf_case_num='16-CV-345',
-        comment='ACTIVE')
+        case_comment='ACTIVE')
     )
     p.cases_list.append(CaseCreate(
         ecf_case_num='21-CV-12',
-        comment='ACTIVE')
+        case_comment='ACTIVE')
     )
 
     p.cases_list[0].ccam_case_num = 'DWIW16CV000345'
@@ -58,10 +58,10 @@ def make_small_payment_in_oldest_active_case(prisoner):
 @then("I should have a balance of $350.00 in my newest case")
 def check_for_balance_in_cases(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == Decimal(156.06).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[0].comment == 'ACTIVE'
+    assert prisoner.cases_list[0].case_comment == 'ACTIVE'
     assert prisoner.cases_list[0].balance.amount_collected == Decimal(648.94).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[1].balance.amount_owed == Decimal(350.00).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[1].comment == 'ACTIVE'
+    assert prisoner.cases_list[1].case_comment == 'ACTIVE'
     assert prisoner.cases_list[1].balance.amount_collected == Decimal(0.00).quantize(cents, ROUND_HALF_UP)
     assert prisoner.refund == 0
     assert prisoner.cases_list[0].transaction.amount_paid == Decimal(4.59).quantize(cents, ROUND_HALF_UP)

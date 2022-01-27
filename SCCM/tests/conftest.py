@@ -37,7 +37,8 @@ def setup_prisoner():
     items = {"doc_num": 15483,
              "check_name": 'Nate A Lindell',
              "amount_paid": Decimal(846.37).quantize(cents, ROUND_HALF_UP),
-             "judgment_name": 'LINDELL, Nate'
+             "judgment_name": 'LINDELL, Nate',
+             "pty_code": 'WIW4568A'
              }
     p = PrisonerCreate(**items)
     p.cases_list.append(CaseCreate(

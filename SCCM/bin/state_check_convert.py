@@ -23,6 +23,7 @@ import SCCM.models.prisoner_schema as pSchema
 import SCCM.services.prisoner_services as ps
 import SCCM.services.case_services as cs
 from SCCM.services.payment_services import prepare_ccam_upload_transactions
+from SCCM.services import crud
 
 
 def check_sum(check_amount, total_by_name_sum):
@@ -114,8 +115,6 @@ def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
     except TypeError:
         prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name)
         exit(1)
-
-
 
 
 
@@ -250,6 +249,14 @@ def main():
     payments = prepare_ccam_upload_transactions(prisoner_list)
 
     cte.write_rows_to_output_file(excel_file, payments, deposit_num, check_date)
+
+    # add prisoners to database
+
+    for p in prisoner_list:
+        db_prisoner = crud.create_prisoner(db_session, p)
+        crud.add_cases_for_prisoner(db_session,db_prisoner,p)
+    db_session.commit()
+
 
 
 if __name__ == '__main__':

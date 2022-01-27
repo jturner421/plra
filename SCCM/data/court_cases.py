@@ -10,7 +10,8 @@ class CourtCase(SqlAlchemyBase):
     __tablename__ = 'court_cases'
 
     id = sa.Column(sa.INT, primary_key=True, autoincrement=True)
-    prisoner_doc_num = sa.Column(sa.Integer, sa.ForeignKey('prisoners.doc_num'))
+    #prisoner_doc_num = sa.Column(sa.Integer, sa.ForeignKey('prisoners.doc_num'))
+    prisoner_id = sa.Column(sa.Integer, sa.ForeignKey('prisoners.id'))
     created_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
     acct_cd = sa.Column(sa.String, nullable=True)
     ecf_case_num = sa.Column(sa.String)

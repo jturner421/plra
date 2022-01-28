@@ -1,9 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from SCCM.models.case import Case
-from SCCM.bin.transaction import Transaction
-from SCCM.bin.prisoners import Prisoners
 from decimal import Decimal, ROUND_HALF_UP
+
+from SCCM.models.case_schema import CaseBase
+import SCCM.models.transaction_schema as ts
+from SCCM.models.prisoner_schema import PrisonerCreate
+import SCCM.services.payment_services as payment
 
 cents = Decimal('0.01')
 
@@ -39,7 +41,7 @@ class Context:
 
         self._strategy = strategy
 
-    def process_payment(self, p: Prisoners, check_number: int) -> None:
+    def process_payment(self, p: PrisonerCreate, check_number: int) -> None:
         result = self._strategy.process_payment(p, check_number)
 
 
@@ -53,12 +55,12 @@ class Strategy(ABC):
     """
 
     @abstractmethod
-    def process_payment(self, p: Prisoners, check_number: int):
+    def process_payment(self, p: PrisonerCreate, check_number: int):
         pass
 
 
 class SingleCasePaymentProcess(Strategy):
-    def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
+    def process_payment(self, p: PrisonerCreate, check_number: int) -> Prisoners:
         case = p.cases_list[0]
         overpayment = False
         case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
@@ -68,42 +70,44 @@ class SingleCasePaymentProcess(Strategy):
         if case.balance.amount_owed < 0:
             overpayment = True
         if overpayment:
-            case.status = 'PAID'
-            overpayment = case.balance.mark_paid()
-            case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
-                                           quantize(cents, ROUND_HALF_UP))
-            p.refund = overpayment
+            payment.prepare_overpayment_single(p, case, check_number)
         else:
-            case.transaction = Transaction(check_number, p.amount_paid)
+            payment.prepare_payment(p, case, check_number)
         return p
 
 
+
 class MultipleCasePaymentProcess(Strategy):
-    def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
+    """
+    Class that handles applying payments to multiple cases
+    """
+
+    def process_payment(self, p: PrisonerCreate, check_number: int) -> Prisoners:
         number_of_cases_for_prisoner = len(p.cases_list)
         overpayment = False
         all_payments_applied = False
+
         while not all_payments_applied and number_of_cases_for_prisoner > 0:
             for case in p.cases_list:
                 case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
                                                 + p.amount_paid
                 case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \
                                            - Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP)
+
                 if case.balance.amount_owed < 0:
                     overpayment = True
                 else:
+                    # When applying payments to successive cases, if no overpayment exists, we need to clear the overpayment
+                    # flag to allow for the loop to break and delete the overpayment set in the previous to loop to
+                    # avoid adding an overpayment line to the CCAM upload file
                     overpayment = False
+                    p.overpayment = None
 
                 if overpayment:
-                    case.status = 'PAID'
-                    overpayment = case.balance.mark_paid()
-                    case.transaction = Transaction(check_number, p.amount_paid - Decimal(overpayment).
-                                                   quantize(cents, ROUND_HALF_UP))
-                    p.amount_paid = overpayment
-                    p.refund = overpayment
+                    payment.prepare_overpayment_multiple(p, case, check_number)
                     number_of_cases_for_prisoner -= 1
                 else:
-                    case.transaction = Transaction(check_number, p.amount_paid)
+                    payment.prepare_payment(p, case, check_number)
                     all_payments_applied = True
                     p.refund = 0
                     break
@@ -111,8 +115,17 @@ class MultipleCasePaymentProcess(Strategy):
 
 
 class OverPaymentProcess(Strategy):
-    def process_payment(self, p: Prisoners, check_number: int) -> Prisoners:
-        # p.cases_list.append(Case('No Active Cases', 'PAID', True))
-        p.overpayment = True
+    """
+    Class that applies and overpayment when a prisoner has no cases found
+    """
+
+    def process_payment(self, p: PrisonerCreate, check_number: int) -> Prisoners:
         p.refund = p.amount_paid
+        p.overpayment = {'overpayment': True,
+                         'ccam_case_num': 'No Active Cases',
+                         'assessed': 0,
+                         'collected': 0,
+                         'outstanding': 0,
+                         'transaction amount': -p.refund
+                         }
         return p

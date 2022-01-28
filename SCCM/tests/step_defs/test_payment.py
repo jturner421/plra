@@ -2,9 +2,9 @@ from pytest_bdd import scenario, scenarios, given, when, then, parsers
 import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
-from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case import Case
-from SCCM.models.case import Balance
+from SCCM.models.prisoner_schema import PrisonerCreate
+from SCCM.models.case_schema import CaseCreate
+from SCCM.models.case_schema import Balance
 
 cents = Decimal('0.01')
 
@@ -18,15 +18,26 @@ def test_single_payment():
 
 @given("I'm a prisoner with an active case", target_fixture='prisoner')
 def get_prisoner():
-    p = Prisoners('Wayne Hart', 1234, Decimal(172.87).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
-    p.cases_list[0].formatted_case_num = 'DWIW21CV000012'
+    items = {"doc_num": 1234,
+             "legal_name": 'Wayne Hart',
+             "amount_paid": Decimal(172.87).quantize(cents, ROUND_HALF_UP)
+             }
+    p = PrisonerCreate(**items)
+    p.cases_list.append(CaseCreate(
+        ecf_case_num='21-CV-12',
+        case_comment='ACTIVE')
+    )
+    p.cases_list[0].ccam_case_num = 'DWIW21CV000012'
     return p
 
 
 @given("I'm a prisoner with no active cases", target_fixture='prisoner_nocase')
 def get_prisoner_with_no_case():
-    p = Prisoners('Wayne Hart', 1234, Decimal(50.00).quantize(cents, ROUND_HALF_UP))
+    items = {"doc_num": 1234,
+             "legal_name": 'Wayne Hart',
+             "amount_paid": Decimal(50.00).quantize(cents, ROUND_HALF_UP)
+             }
+    p = PrisonerCreate(**items)
     return p
 
 
@@ -48,6 +59,8 @@ def check_for_overpayment(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == 0
     assert prisoner.cases_list[0].balance.amount_collected == 805
     assert prisoner.refund == Decimal(12.22).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(160.65).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.check_number == 57686
 
 
 @when("I make a payment in the amount of $126.34")
@@ -61,10 +74,11 @@ def make_normal_payment(prisoner):
 
 @then("I should have a balance of $34.31")
 def check_for_normal_payment(prisoner):
-    assert prisoner.cases_list[0].overpayment is False
     assert prisoner.cases_list[0].balance.amount_owed == Decimal(34.31).quantize(cents, ROUND_HALF_UP)
     assert prisoner.cases_list[0].balance.amount_collected == Decimal(770.690).quantize(cents, ROUND_HALF_UP)
-    assert not hasattr(prisoner, 'refund')
+    assert prisoner.refund is None
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(126.34).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.check_number == 57686
 
 
 @when("I make a payment in the amount of $50.00")
@@ -78,4 +92,6 @@ def make_payment_with_no_active_cases(prisoner_nocase):
 @then("I should receive a refund of $50.00")
 def process_overpayment(prisoner_nocase):
     assert prisoner_nocase.overpayment
+    assert prisoner_nocase.overpayment['transaction amount'] == -50.00
+    assert prisoner_nocase.overpayment['ccam_case_num'] == 'No Active Cases'
     assert prisoner_nocase.refund == 50.00

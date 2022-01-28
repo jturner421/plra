@@ -46,27 +46,22 @@ def open_xls_file(filename):
     return book1
 
 
-def format_case_num(case_num):
+def format_case_num(case):
     """
     Identifies and formats case numbers for JIFMS lookup
-    :param case_num: prisoner case number
+    :param case: prisoner case number
     :return: CCAM formatted case number
     """
+    case_num_split = str.split(case.ecf_case_num, '-')
     # Check if multi-defendant case
-    try:
-        case_num_split = str.split(case_num, '-')
-        if len(case_num_split) > 3:
-            formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-{case_num_split[3]}"
-            return formatted_case_num
-        else:
-            formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-001"
-            return formatted_case_num
-    except IndexError:
-        pass
 
-    except TypeError:
-        print('No valid case found')
-        pass
+    if case.case_party_number:
+        formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-{case.case_party_number}"
+        return formatted_case_num
+    else:
+        formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-001"
+        return formatted_case_num
+
 
 
 def create_output_file(check_date, check_num, output_path):
@@ -186,10 +181,11 @@ def write_rows_to_output_file(file, payee_list, deposit_num, effective_date):
     sheet = wb.get_sheet_by_name('PLRA')
     rownum = 2  # skip first row for header
     for p in payee_list:
-        if p['prisoner'].overpayment:
-            sheet.cell = _overpayment_row(p, rownum, sheet)
-        else:
+        # Transaction has 2 dictionary keys: Prisoner and Case
+        if len(p) ==2:
             sheet.cell = _transaction_row(deposit_num, effective_date, p, rownum, sheet)
+        else:
+            sheet.cell = _overpayment_row(deposit_num, effective_date, p, rownum, sheet)
         rownum += 1
 
     wb.save(file)
@@ -203,18 +199,18 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
     sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
     # Check length of name to fit within CCAM batch upload constraints
     try:
-        if len(p['prisoner'].check_name) <= 20:
-            sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
+        if len(p['prisoner'].legal_name) <= 20:
+            sheet.cell(row=rownum, column=3).value = p['prisoner'].legal_name
         else:
-            shortened_name = get_shortened_name(p['prisoner'].check_name)
+            shortened_name = get_shortened_name(p['prisoner'].legal_name)
             sheet.cell(row=rownum, column=3).value = shortened_name
     except TypeError as error:
-        print(f'{p.check_name} threw {error}')
+        print(f'{p.legal_name} threw {error}')
     try:
         sheet.cell(row=rownum, column=4).value = effective_date
         sheet.cell(row=rownum, column=5).value = Decimal(p['case'].transaction.amount_paid)
         sheet.cell(row=rownum, column=6).value = deposit_num
-        sheet.cell(row=rownum, column=7).value = str.upper(p['case'].formatted_case_num)
+        sheet.cell(row=rownum, column=7).value = str.upper(p['case'].ccam_case_num)
         sheet.cell(row=rownum, column=8).value = p['case'].balance.amount_assessed
         sheet.cell(row=rownum, column=9).value = p['case'].balance.amount_collected
         sheet.cell(row=rownum, column=10).value = p['case'].balance.amount_owed
@@ -222,7 +218,7 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
         sheet.cell(row=rownum, column=4).value = effective_date
         sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].amount_paid)
         sheet.cell(row=rownum, column=6).value = deposit_num
-        sheet.cell(row=rownum, column=7).value = p['case'].case_number.upper()
+        sheet.cell(row=rownum, column=7).value = p['case'].ecf_case_num.upper()
         sheet.cell(row=rownum, column=8).value = 0
         sheet.cell(row=rownum, column=9).value = 0
         sheet.cell(row=rownum, column=10).value = 0
@@ -235,12 +231,18 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
     return sheet.cell
 
 
-def _overpayment_row(p, rownum, sheet):
+def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
     # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
     # checks for the same day
     sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
     sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
-    sheet.cell(row=rownum, column=3).value = p['prisoner'].check_name
-    sheet.cell(row=rownum, column=7).value = 'No Active Cases'
-    sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].refund)
+    sheet.cell(row=rownum, column=3).value = p['prisoner'].legal_name
+    sheet.cell(row=rownum, column=4).value = effective_date
+    sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].overpayment['transaction amount'])
+    sheet.cell(row=rownum, column=6).value = deposit_num
+    sheet.cell(row=rownum, column=7).value = p['prisoner'].overpayment['ccam_case_num']
+    # sheet.cell(row=rownum, column=8).value = p['prisoner'].overpayment['assessed']
+    # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['collected']
+    # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['outstanding']
+    sheet.cell(row=rownum, column=11).value = Decimal(p['prisoner'].refund)
     return sheet.cell

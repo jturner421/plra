@@ -2,9 +2,9 @@ from pytest_bdd import scenario, scenarios, given, when, then, parsers
 import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
-from SCCM.bin.prisoners import Prisoners
-from SCCM.models.case import Case
-from SCCM.models.case import Balance
+from SCCM.models.prisoner_schema import PrisonerCreate
+from SCCM.models.case_schema import CaseCreate
+from SCCM.models.case_schema import Balance
 
 cents = Decimal('0.01')
 
@@ -20,11 +20,22 @@ def test_multiple_cases_for_payment():
 
 @given("I'm a prisoner with multiple unpaid active cases", target_fixture='prisoner')
 def get_prisoner_cases():
-    p = Prisoners('Bob Smith', 1234, Decimal(4.59).quantize(cents, ROUND_HALF_UP))
-    p.cases_list.append(Case(case_number='16-CV-345', status='ACTIVE', overpayment=False))
-    p.cases_list.append(Case(case_number='21-CV-12', status='ACTIVE', overpayment=False))
-    p.cases_list[0].formatted_case_num = 'DWIW16CV000345'
-    p.cases_list[1].formatted_case_num = 'DWIW21CV000012'
+    items = {"doc_num": 1234,
+             "legal_name": 'Bob Smith',
+             "amount_paid": Decimal(4.59).quantize(cents, ROUND_HALF_UP)
+             }
+    p = PrisonerCreate(**items)
+    p.cases_list.append(CaseCreate(
+        ecf_case_num='16-CV-345',
+        case_comment='ACTIVE')
+    )
+    p.cases_list.append(CaseCreate(
+        ecf_case_num='21-CV-12',
+        case_comment='ACTIVE')
+    )
+
+    p.cases_list[0].ccam_case_num = 'DWIW16CV000345'
+    p.cases_list[1].ccam_case_num = 'DWIW21CV000012'
     return p
 
 
@@ -47,10 +58,12 @@ def make_small_payment_in_oldest_active_case(prisoner):
 @then("I should have a balance of $350.00 in my newest case")
 def check_for_balance_in_cases(prisoner):
     assert prisoner.cases_list[0].balance.amount_owed == Decimal(156.06).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[0].status == 'ACTIVE'
+    assert prisoner.cases_list[0].case_comment == 'ACTIVE'
     assert prisoner.cases_list[0].balance.amount_collected == Decimal(648.94).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[1].overpayment is False
     assert prisoner.cases_list[1].balance.amount_owed == Decimal(350.00).quantize(cents, ROUND_HALF_UP)
-    assert prisoner.cases_list[1].status == 'ACTIVE'
+    assert prisoner.cases_list[1].case_comment == 'ACTIVE'
     assert prisoner.cases_list[1].balance.amount_collected == Decimal(0.00).quantize(cents, ROUND_HALF_UP)
     assert prisoner.refund == 0
+    assert prisoner.cases_list[0].transaction.amount_paid == Decimal(4.59).quantize(cents, ROUND_HALF_UP)
+    assert prisoner.cases_list[0].transaction.check_number == 57686
+    assert prisoner.cases_list[1].transaction is None

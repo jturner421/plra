@@ -26,7 +26,7 @@ def main():
     # Suppress SQLAlchemy warning about Decimal storage.
     warnings.filterwarnings('ignore', r".*support Decimal objects natively", SAWarning, r'^sqlalchemy\.sql\.sqltypes$')
 
-    case_number = input('Enter Case Number (yy-cv-number-xxx(if multi-defendant case):  ')
+    case_number = input('Enter CaseBase Number (yy-cv-number-xxx(if multi-defendant case):  ')
 
     s = db_session
     case_balance = s.query(CourtCase, CaseBalance).filter(CourtCase.ecf_case_num == case_number.upper()) \

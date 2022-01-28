@@ -13,4 +13,4 @@ class CaseFilter(SqlAlchemyBase):
     filter_text = sa.Column(sa.String)
 
     def __repr__(self):
-        return '<Case Filter {}>'.format(self.filter_text)
+        return '<CaseBase Filter {}>'.format(self.filter_text)

@@ -23,8 +23,14 @@ def create_prisoner(db: Session, prisoner: prisoner_schema.PrisonerCreate):
     return db_prisoner
 
 
-def get_prisoner(db: Session, doc_num: int):
-    return db.query(prisoners.Prisoner).filter(prisoners.Prisoner.doc_num == doc_num).first()
+def get_prisoner_with_active_case(db: Session, doc_num: int, legal_name: str):
+    print(f'Retreiving {legal_name} from the database.\n')
+    result = db.query(prisoners.Prisoner).filter(prisoners.Prisoner.doc_num == doc_num).first()
+    if result:
+        result.cases_list = [case for case in result.cases_list if case.case_comment == 'ACTIVE']
+        return result
+    else:
+        return None
 
 
 def add_cases_for_prisoner(db: Session, db_prisoner: prisoners.Prisoner,
@@ -54,7 +60,7 @@ def add_cases_for_prisoner(db: Session, db_prisoner: prisoners.Prisoner,
                 amount_paid=p.amount_paid
             )
             new_case.case_transactions.append(transaction)
-
+        # TODO - check for zero balance and marked PAID
         db_prisoner.cases_list.append(new_case)
     return db_prisoner
 
@@ -69,7 +75,7 @@ def update_case_balances(db: Session, case: CaseModel, db_prisoner_list: List[Pr
     case_index_loc = next(i for i, v in enumerate(prisoner.cases_list) if v.id == case.id)
     case_db = prisoner.cases_list[case_index_loc]
     case_db.amount_collected = case.balance.amount_collected
-    case_db.amount_owed = case.balance.amount_owed
+    case_db.amount_owed = case.balance.amount_owed # TODO Check for zero balance and marked case paid
     case_db.case_transactions.append(case_transaction.CaseTransaction(
         check_number=case.transaction.check_number,
         amount_paid=case.transaction.amount_paid

@@ -164,8 +164,8 @@ def main():
         prisoner_dict = state_check_data.to_dict('index')
 
         # make backup of SQLite DB
-        original = f'{settings.db_base_directory}{settings.db_file}.db'
-        destination = f'{settings.db_backup_directory}/{settings.db_file}_{check_number}.db'
+        original = f'{settings.db_base_directory}{settings.db_file}'
+        destination = f'{settings.db_backup_directory}/{settings.db_file}_{check_number}'
         prod_db_backup(original, destination)
 
         # Instantiate prisoner objects
@@ -185,19 +185,19 @@ def main():
             # lookup name in internal DB for existance
             ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
             try:
-
                 amount_paid = p.amount_paid
-                prisonerOrm = crud.get_prisoner(db_session, p.doc_num)
+                prisonerOrm = crud.get_prisoner_with_active_case(db_session, p.doc_num, p.legal_name)
                 if prisonerOrm:
                     db_prisoner_list.append(prisonerOrm)
                     p = pSchema.PrisonerModel.from_orm(prisonerOrm)
                     p.amount_paid = amount_paid
 
                     for case in p.cases_list:
-                        case.balance = Balance()
-                        case.balance.amount_assessed = Decimal(case.amount_assessed.quantize(cents, ROUND_HALF_UP))
-                        case.balance.amount_collected = Decimal(case.amount_collected.quantize(cents, ROUND_HALF_UP))
-                        case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
+                        if case.case_comment == 'ACTIVE':
+                            case.balance = Balance()
+                            case.balance.amount_assessed = Decimal(case.amount_assessed.quantize(cents, ROUND_HALF_UP))
+                            case.balance.amount_collected = Decimal(case.amount_collected.quantize(cents, ROUND_HALF_UP))
+                            case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
 
                         prisoner_found = True
                     prisoner_list[i] = p

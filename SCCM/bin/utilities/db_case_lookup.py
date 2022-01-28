@@ -5,12 +5,11 @@ Command line database case lookup. Retrieves case information and prints to scre
 from pathlib import Path
 import warnings
 from sqlalchemy.exc import SAWarning
-import sqlalchemy as sa
 from decimal import *
 
 from SCCM.config import config
 from SCCM.data.court_cases import CourtCase
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 
 # TODO - rewrite
 def main():

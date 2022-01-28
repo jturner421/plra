@@ -6,15 +6,12 @@ from pathlib import Path
 
 import keyring
 import openpyxl
-from openpyxl.utils import get_column_letter
-import pandas as pd
 import requests
-from sqlalchemy import except_all
 
 from SCCM.config import config
 from SCCM.data.case_reconciliation import CaseReconciliation
 from SCCM.data.court_cases import CourtCase
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 
 
 def init_db():

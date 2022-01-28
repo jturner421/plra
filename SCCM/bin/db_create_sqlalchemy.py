@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 
 
 def main():

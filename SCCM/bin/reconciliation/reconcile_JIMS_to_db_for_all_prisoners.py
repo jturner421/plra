@@ -15,13 +15,12 @@ import warnings
 import openpyxl
 import pandas as pd
 import requests
-from sqlalchemy import and_, func
 from sqlalchemy.exc import SAWarning
 from SCCM.bin import convert_to_excel as cte
 from SCCM.config import config
 from SCCM.data.case_balance import CaseBalance
 from SCCM.data.court_cases import CourtCase
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 
 
 def get_ccam_account_information(case_num, session, base_url):

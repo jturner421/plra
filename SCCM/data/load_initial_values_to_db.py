@@ -2,10 +2,8 @@
 Populates database with lookup values used by the application
 """
 
-from SCCM.config.config_model import PLRASettings
 from SCCM.data.case_filter import CaseFilter
-import SCCM.data.initiate_global_db_session
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 from SCCM.data.suffix import SuffixTable
 
 

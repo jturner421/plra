@@ -61,3 +61,14 @@ def prepare_payment(p: PrisonerCreate, case: CaseCreate, check_number: int) -> C
     case.transaction = TransactionCreate(
         check_number=check_number, amount_paid=p.amount_paid.quantize(cents, ROUND_HALF_UP))
     return p, case
+
+
+def check_sum(check_amount, total_by_name_sum):
+    try:
+        assert total_by_name_sum == check_amount
+        print(
+            f'Check amount of {check_amount:,.2f} matches the sum of the converted file - {total_by_name_sum:,.2f}')
+    except AssertionError:
+        print(
+            f"ERROR: The sum of the file header:{check_amount:,.2f} does not match the sum:{total_by_name_sum:,.2f}"
+            f" of the converted file.\n")

@@ -1,4 +1,4 @@
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 from SCCM.config.config_model import PLRASettings
 
 config_file = '../config/dev.env'

@@ -2,11 +2,10 @@ import pandas as pd
 from decimal import Decimal
 from decimal import ROUND_HALF_UP
 
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 from SCCM.config.config_model import PLRASettings
 from SCCM.bin.ccam_lookup import CCAMSettings
-from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
-    get_files as gf
+from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, get_files as gf
 
 from SCCM.models.prisoner_schema import PrisonerCreate
 from SCCM.services import crud

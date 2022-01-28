@@ -1,6 +1,6 @@
 from SCCM.data.case_filter import CaseFilter
 from SCCM.data.suffix import SuffixTable
-from SCCM.data.db_session import DbSession
+from SCCM.services.db_session import DbSession
 from sqlalchemy import select
 
 

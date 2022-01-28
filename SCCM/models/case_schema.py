@@ -1,14 +1,11 @@
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from typing import Optional
-import re
 
-from SCCM.data.court_cases import CourtCase
 from SCCM.models.balance import Balance
 import SCCM.models.transaction_schema as ts
 # from SCCM.models.person import PrisonerModel
 
-from SCCM.data.db_session import DbSession
-from pydantic import BaseModel, ValidationError, validator, constr
+from pydantic import BaseModel, constr
 
 cents = Decimal('0.01')
 

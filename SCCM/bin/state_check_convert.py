@@ -1,20 +1,13 @@
 from __future__ import annotations
 from datetime import datetime
-from decimal import *
-import sqlite3
-import os
+from decimal import Decimal, ROUND_HALF_UP
 import argparse
 
-import pandas as pd
-from sqlalchemy import select
-from sqlalchemy.exc import NoResultFound
-import SCCM.data.initiate_global_db_session
-from SCCM.data.db_session import DbSession
+import SCCM.services.initiate_global_db_session
+from SCCM.services.db_session import DbSession
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
     get_files as gf
 
-from SCCM.data.court_cases import CourtCase
-from SCCM.data.prisoners import Prisoner
 from SCCM.models.balance import Balance
 import SCCM.bin.payment_strategy as payment
 from SCCM.config.config_model import PLRASettings
@@ -22,99 +15,9 @@ from SCCM.bin.ccam_lookup import CCAMSettings
 import SCCM.models.prisoner_schema as pSchema
 import SCCM.services.prisoner_services as ps
 import SCCM.services.case_services as cs
-from SCCM.services.payment_services import prepare_ccam_upload_transactions
+from SCCM.services.database_services import prod_db_backup
+from SCCM.services.payment_services import prepare_ccam_upload_transactions, check_sum
 from SCCM.services import crud
-
-
-def check_sum(check_amount, total_by_name_sum):
-    try:
-        assert total_by_name_sum == check_amount
-        print(
-            f'Check amount of {check_amount:,.2f} matches the sum of the converted file - {total_by_name_sum:,.2f}')
-    except AssertionError:
-        print(
-            f"ERROR: The sum of the file header:{check_amount:,.2f} does not match the sum:{total_by_name_sum:,.2f}"
-            f" of the converted file.")
-
-
-def convert_sheet_to_dataframe(sheet):
-    """
-    Takes Openpyxl sheet with prisoner payments, converts to panda dataframe, and cleans up for futher processing
-    :param sheet: Sheet object containing prisoner payment data
-    :return: dataframe of payments
-    """
-    df = pd.DataFrame(sheet.values)
-    dframe = df[[1, 2, 7]]
-    dframe.columns = ['DOC', 'Name', 'Amount']
-    dframe = dframe.drop(0)
-    return dframe
-
-
-def progress(status, remaining, total):
-    print('Backing up Database')
-    print(f'Copied {total - remaining} of {total} pages...')
-
-
-def prod_db_backup(original, destination):
-    db_orig = sqlite3.connect(original)
-    db_backup = sqlite3.connect(destination)
-    with db_backup:
-        db_orig.backup(db_backup, pages=1, progress=progress)
-    db_backup.close()
-    db_orig.close()
-
-
-def prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name):
-    print('An errror processing this check has occured. \n')
-    db_orig = sqlite3.connect(db_file)
-
-    backup = f'{db_backup_path}{db_backup_file_name}_backup.db'
-    db_backup = sqlite3.connect(backup)
-    db_restore = sqlite3.connect(destination)
-
-    # first make a backup of the current state
-    with db_orig:
-        db_orig.backup(db_backup, pages=1)
-    # Delete the db file
-    os.remove(db_file)
-
-    # Copy the restore DB to the original file name
-    db_orig = sqlite3.connect(db_file)
-    print('Restoring database to previous state.\n')
-    with db_restore:
-        db_restore.backup(db_orig, pages=1)
-
-    db_backup.close()
-    db_orig.close()
-    db_restore.close()
-
-
-def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                  db_file, destination, db_backup_path, db_backup_file_name):
-    try:
-        for c in p.cases_list:
-            print(f'Populating case balances for {c}')
-            prisoner.cases.append(CourtCase(prisoner_doc_num=p.doc_num, case_num=c))
-
-            formatted_case_number = cte.format_case_num(prisoner.cases[-1].ecf_case_num)
-            ccam_balance = ccam.get_ccam_account_information(formatted_case_number)
-            prisoner.cases[-1].acct_cd = ccam_balance['data'][0]['acct_cd']
-            prisoner.cases[-1].case_comment = 'ACTIVE'
-            # TODO create case class with composition to prisoner
-            ccam.sum_account_balances(ccam_balance, p)
-            # populate balances for cases in person object
-            prisoner.cases[-1].case_balance.append(
-                CaseBalance(court_case_id=prisoner.cases[-1].id,
-                            amount_assessed=p.ccam_balance["Total Owed"],
-                            amount_collected=p.ccam_balance["Total Collected"],
-                            amount_owed=p.ccam_balance["Total Outstanding"]))
-            # db_session.add(prisoner.court_cases[-1])
-            # db_session.commit()
-        p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)).all()
-        return p, prisoner
-    except TypeError:
-        prod_db_restore(db_file, destination, db_backup_path, db_backup_file_name)
-        exit(1)
 
 
 def main():
@@ -137,7 +40,7 @@ def main():
         check_date = datetime.today().strftime('%m/%d/%Y')
         check_amount = sheet['K2'].value
         check_number = sheet['L2'].value
-        state_check_data = convert_sheet_to_dataframe(sheet)
+        state_check_data =cte.convert_sheet_to_dataframe(sheet)
 
         state_check_data = dc.aggregate_prisoner_payment_amounts(state_check_data)
 

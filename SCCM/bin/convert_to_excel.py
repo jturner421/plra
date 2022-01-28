@@ -3,6 +3,7 @@ import random
 from decimal import Decimal
 
 import openpyxl
+import pandas as pd
 import xlrd
 from openpyxl import Workbook
 from openpyxl.styles import NamedStyle, Font
@@ -61,7 +62,6 @@ def format_case_num(case):
     else:
         formatted_case_num = f"DWIW3{case_num_split[0]}{case_num_split[1]}{case_num_split[2].zfill(6)}-001"
         return formatted_case_num
-
 
 
 def create_output_file(check_date, check_num, output_path):
@@ -182,7 +182,7 @@ def write_rows_to_output_file(file, payee_list, deposit_num, effective_date):
     rownum = 2  # skip first row for header
     for p in payee_list:
         # Transaction has 2 dictionary keys: Prisoner and Case
-        if len(p) ==2:
+        if len(p) == 2:
             sheet.cell = _transaction_row(deposit_num, effective_date, p, rownum, sheet)
         else:
             sheet.cell = _overpayment_row(deposit_num, effective_date, p, rownum, sheet)
@@ -246,3 +246,16 @@ def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
     # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['outstanding']
     sheet.cell(row=rownum, column=11).value = Decimal(p['prisoner'].refund)
     return sheet.cell
+
+
+def convert_sheet_to_dataframe(sheet):
+    """
+    Takes Openpyxl sheet with prisoner payments, converts to panda dataframe, and cleans up for futher processing
+    :param sheet: Sheet object containing prisoner payment data
+    :return: dataframe of payments
+    """
+    df = pd.DataFrame(sheet.values)
+    dframe = df[[1, 2, 7]]
+    dframe.columns = ['DOC', 'Name', 'Amount']
+    dframe = dframe.drop(0)
+    return dframe

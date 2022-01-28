@@ -185,9 +185,7 @@ def main():
             # lookup name in internal DB for existance
             ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
             try:
-                # stmt = select(Prisoner).filter_by(doc_num=int(p.doc_num))
-                # stmt = select(Prisoner).where(Prisoner.doc_num == p.doc_num)
-                # prisoner = db_session.execute(stmt).scalar_one()
+
                 amount_paid = p.amount_paid
                 prisonerOrm = crud.get_prisoner(db_session, p.doc_num)
                 if prisonerOrm:

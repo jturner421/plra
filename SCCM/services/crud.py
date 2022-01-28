@@ -55,7 +55,7 @@ def add_cases_for_prisoner(db: Session, db_prisoner: prisoners.Prisoner,
             )
             new_case.case_transactions.append(transaction)
 
-        db_prisoner.cases.append(new_case)
+        db_prisoner.cases_list.append(new_case)
     return db_prisoner
 
 

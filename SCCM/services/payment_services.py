@@ -72,3 +72,16 @@ def check_sum(check_amount, total_by_name_sum):
         print(
             f"ERROR: The sum of the file header:{check_amount:,.2f} does not match the sum:{total_by_name_sum:,.2f}"
             f" of the converted file.\n")
+
+
+def prepare_deposit_number(check_date):
+    check_date_split = str.split(check_date, '/')
+    deposit_num = f"PL{check_date_split[0]}{check_date_split[1]}{check_date_split[2][2:]}"
+    return deposit_num
+
+
+def get_check_sum(state_check_data):
+    cents = Decimal('0.01')
+    total_by_name_sum = state_check_data['Amount'].sum()
+    total_by_name_sum = Decimal(total_by_name_sum).quantize(cents, ROUND_HALF_UP)
+    return cents, total_by_name_sum

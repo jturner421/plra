@@ -54,6 +54,7 @@ def main():
         for i, p in enumerate(prisoner_list):
             p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
             p = cs.get_prisoner_case_numbers(p)
+
             cases_to_skip = []
 
             cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in p.cases_list}

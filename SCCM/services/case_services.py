@@ -1,14 +1,17 @@
 import os
+from decimal import Decimal, ROUND_HALF_UP
+
 import pydantic.errors
 import SCCM.bin.dataframe_cleanup as dc
 import SCCM.models.case_schema as cs
+from SCCM.models.balance import Balance
 
 filter_list = dc.populate_cases_filter_list()
 
 
 def get_prisoner_case_numbers(p):
     """
-    Identifies active cases for prisoner
+    Identifies active cases for prisoner. Retrives from network share
 
     :return: oldest active case
     """
@@ -27,6 +30,7 @@ def get_prisoner_case_numbers(p):
                 case_comment='ACTIVE')
             )
 
+        # special processing for cases for mutliple prisoner cases
         except pydantic.ValidationError:
             str_split = c.split('-')
             case_party_number = str_split[-1]
@@ -39,12 +43,16 @@ def get_prisoner_case_numbers(p):
     return p
 
 
-def _format_name(self):
-    # TODO - Need to finish this for Excel Output
-    name = self.lookup_name.split()
-    reordered_name = []
-    if len(name) == 3:
-        reordered_name.append(name[2])
-        reordered_name.append(name[1])
-        reordered_name.append(name[0])
-        self.lookup_name = " ".join(reordered_name)
+def initialize_balances(case, cases_dict, ccam_summary_balance, cents):
+    case.balance = Balance()
+    balance_key = cases_dict[case.ecf_case_num].split('-')[0]
+    case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
+    case.ccam_case_num = cases_dict[case.ecf_case_num]
+    ccam_balance = ccam_summary_balance.loc[balance_key].to_dict()
+    case.balance.amount_assessed = Decimal(ccam_balance['Total Owed']).quantize(cents,
+                                                                                ROUND_HALF_UP)
+    case.balance.amount_collected = Decimal(ccam_balance['Total Collected']).quantize(cents,
+                                                                                      ROUND_HALF_UP)
+    case.balance.amount_owed = Decimal(ccam_balance['Total Outstanding']).quantize(cents,
+                                                                                   ROUND_HALF_UP)
+    return case

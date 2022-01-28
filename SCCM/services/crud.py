@@ -80,3 +80,15 @@ def update_case_balances(db: Session, case: CaseModel, db_prisoner_list: List[Pr
         check_number=case.transaction.check_number,
         amount_paid=case.transaction.amount_paid
     ))
+
+
+def add_transactions_to_database(db: Session, prisoner_list, db_prisoner_list: List[Prisoner]):
+    for p in prisoner_list:
+        if p.exists:
+            new_transactions = [case for case in p.cases_list if case.transaction]
+            for t in new_transactions:
+                update_case_balances(db, t, db_prisoner_list)
+        else:
+            db_prisoner = create_prisoner(db_session, p)
+            add_cases_for_prisoner(db_session, db_prisoner, p)
+    db.commit()

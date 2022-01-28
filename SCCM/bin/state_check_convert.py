@@ -190,18 +190,21 @@ def main():
                 # prisoner = db_session.execute(stmt).scalar_one()
                 amount_paid = p.amount_paid
                 prisonerOrm = crud.get_prisoner(db_session, p.doc_num)
-                db_prisoner_list.append(prisonerOrm)
-                p = pSchema.PrisonerModel.from_orm(prisonerOrm)
-                p.amount_paid = amount_paid
+                if prisonerOrm:
+                    db_prisoner_list.append(prisonerOrm)
+                    p = pSchema.PrisonerModel.from_orm(prisonerOrm)
+                    p.amount_paid = amount_paid
 
-                for case in p.cases_list:
-                    case.balance = Balance()
-                    case.balance.amount_assessed = Decimal(case.amount_assessed.quantize(cents, ROUND_HALF_UP))
-                    case.balance.amount_collected = Decimal(case.amount_collected.quantize(cents, ROUND_HALF_UP))
-                    case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
+                    for case in p.cases_list:
+                        case.balance = Balance()
+                        case.balance.amount_assessed = Decimal(case.amount_assessed.quantize(cents, ROUND_HALF_UP))
+                        case.balance.amount_collected = Decimal(case.amount_collected.quantize(cents, ROUND_HALF_UP))
+                        case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
 
-                    prisoner_found = True
-                prisoner_list[i] = p
+                        prisoner_found = True
+                    prisoner_list[i] = p
+                else:
+                    prisoner_found = False
 
             except NoResultFound:
                 prisoner_found = False

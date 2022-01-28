@@ -14,11 +14,11 @@ suffix_list = dc.populate_suffix_list()
 
 
 def add_prisoner_to_db_session(network_base_dir: str, p: pSchema.PrisonerCreate):
-    print(f'{p.check_name} not found in database. Creating.... ')
+    print(f'{p.legal_name} not found in database. Creating.... ')
     # Get parameters, create new user, insert into DB and load balances
     # search for name on network share
-    p.check_name = drop_suffix_from_name(p.check_name)
-    p.search_dir = construct_search_directory_for_prisoner(p.check_name, network_base_dir)
+    p.legal_name = drop_suffix_from_name(p.legal_name)
+    p.search_dir = construct_search_directory_for_prisoner(p.legal_name, network_base_dir)
     p.judgment_name = get_name_ratio(p)
     p.case_search_dir = f"{p.search_dir}/{p.judgment_name}"
     return p
@@ -65,7 +65,7 @@ def construct_search_directory_for_prisoner(lookup_name: str, base_dir: str):
 
 def __name_token_sort_ratio(p, directory_name):
     token_sort_dict = Counter({})
-    lookup_name = p.check_name
+    lookup_name = p.legal_name
     for name in directory_name:
         directory_name = name[0]
         token_sort_ratio = fuzz.token_sort_ratio(name, lookup_name)
@@ -82,8 +82,8 @@ def get_name_ratio(p):
     :return: prisoner name matching payee name
     """
     directory = os.listdir(p.search_dir)
-    ratio_names = process.extract(p.check_name, directory)
-    highest = process.extractOne(p.check_name, directory)
+    ratio_names = process.extract(p.legal_name, directory)
+    highest = process.extractOne(p.legal_name, directory)
     # Handling edge cases and validate highest match
     # get token sort ratios for top three directory matches
     token_sort_ratios = __name_token_sort_ratio(p, ratio_names)

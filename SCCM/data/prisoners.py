@@ -21,7 +21,7 @@ class Prisoner(SqlAlchemyBase):
     legal_name = sa.Column(sa.String, index=True)
     vendor_code = sa.Column(sa.String, nullable=True)
 
-    cases = relationship("CourtCase", back_populates='prisoner')
+    cases_list = relationship("CourtCase", back_populates='prisoner')
     aliases = relationship('Alias', back_populates='prisoner_name')
 
     def __repr__(self):

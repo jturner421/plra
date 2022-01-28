@@ -19,7 +19,7 @@ class CaseBase(BaseModel):
 
     """
     ecf_case_num: constr(regex="[0-9][0-9]-[CV][CV]-[0-9]+$")
-    comment: str
+    case_comment: str
 
 
 class CaseCreate(CaseBase):
@@ -32,14 +32,14 @@ class CaseCreate(CaseBase):
 
 class CaseModel(CaseBase):
     id: int
-    prisoner_doc_num: int
+    prisoner_id: int
     acct_cd: Optional[str] = None
+    ccam_case_num:str
     amount_assessed: Decimal
     amount_collected: Decimal
     amount_owed: Decimal
+    balance: Optional[Balance] = None
     transaction: Optional[ts.TransactionModel] = None
-
-    # prisoner: PrisonerModel
 
     class Config:
         orm_mode = True

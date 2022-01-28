@@ -35,21 +35,22 @@ def setup_db():
 @pytest.fixture
 def setup_prisoner():
     items = {"doc_num": 15483,
-             "check_name": 'Nate A Lindell',
+             "legal_name": 'Nate A Lindell',
              "amount_paid": Decimal(846.37).quantize(cents, ROUND_HALF_UP),
-             "judgment_name": 'LINDELL, Nate'
+             "judgment_name": 'LINDELL, Nate',
+             "vendor_code": 'WIW4568A'
              }
     p = PrisonerCreate(**items)
     p.cases_list.append(CaseCreate(
         ecf_case_num='06-CV-608',
-        comment='ACTIVE',
+        case_comment='ACTIVE',
         acct_cd='WIWAPCCA2659',
         ccam_case_num='DWIW306CV000608-001',
         balance=Balance(amount_assessed=805, amount_collected=91.28, amount_owed=713.72)
     ))
     p.cases_list.append(CaseCreate(
         ecf_case_num='07-CV-484',
-        comment='ACTIVE',
+        case_comment='ACTIVE',
         acct_cd='WIWAPCCA2659',
         ccam_case_num='DWIW307CV000484-001',
         balance=Balance(amount_assessed=350, amount_collected=1.50, amount_owed=348.50)
@@ -57,7 +58,7 @@ def setup_prisoner():
 
     p.cases_list.append(CaseCreate(
         ecf_case_num='12-CV-646',
-        comment='ACTIVE',
+        case_comment='ACTIVE',
         acct_cd='WIWAPCCA2659',
         ccam_case_num='DWIW312CV000646-001',
         balance=Balance(amount_assessed=855, amount_collected=0, amount_owed=855)
@@ -68,7 +69,7 @@ def setup_prisoner():
 @pytest.fixture
 def setup_prisoner_refund():
     items = {"doc_num": 15483,
-             "check_name": 'Walter W Blanck',
+             "legal_name": 'Walter W Blanck',
              "amount_paid": Decimal(528.87).quantize(cents, ROUND_HALF_UP),
              "judgment_name": 'BLANCK, Walter',
              "refund": Decimal(528.87).quantize(cents, ROUND_HALF_UP)
@@ -83,14 +84,14 @@ def setup_prisoner_refund():
                      }
     p.cases_list.append(CaseCreate(
         ecf_case_num='13-CV-193',
-        comment='PAID',
+        case_comment='PAID',
         acct_cd='WIWAPCCA2659',
         ccam_case_num='DWIW313CV000193-001',
         balance=Balance(amount_assessed=350, amount_collected=350, amount_owed=0)
     ))
     p.cases_list.append(CaseCreate(
         ecf_case_num='14-CV-135',
-        comment='PAID',
+        case_comment='PAID',
         acct_cd='WIWAPCCA2659',
         ccam_case_num='DWIW313CV000135-001',
         balance=Balance(amount_assessed=350, amount_collected=350, amount_owed=0)

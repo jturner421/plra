@@ -14,4 +14,4 @@ def test_fixture_working(setup_prisoner):
 
 def test_ccam_payment_lines_no_refund(setup_prisoner):
     result = ps.prepare_ccam_upload_transactions([setup_prisoner])
-    assert len(result)==2
+    assert len(result) == 2

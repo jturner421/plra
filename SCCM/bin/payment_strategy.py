@@ -76,6 +76,7 @@ class SingleCasePaymentProcess(Strategy):
         return p
 
 
+
 class MultipleCasePaymentProcess(Strategy):
     """
     Class that handles applying payments to multiple cases

@@ -2,10 +2,10 @@ import pytest
 import sqlite3
 from decimal import Decimal
 from decimal import Decimal, ROUND_HALF_UP
-from SCCM.models.prisoner_schema import PrisonerCreate
-from SCCM.models.case_schema import CaseCreate
-from SCCM.models.balance import Balance
-from SCCM.models.transaction_schema import TransactionCreate
+from SCCM.schemas.prisoner_schema import PrisonerCreate
+from SCCM.schemas.case_schema import CaseCreate
+from SCCM.schemas.balance import Balance
+from SCCM.schemas.transaction_schema import TransactionCreate
 
 cents = Decimal('0.01')
 

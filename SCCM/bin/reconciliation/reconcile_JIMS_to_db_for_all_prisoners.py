@@ -1,7 +1,7 @@
 """
 Performs reconciliation between JIFMS and application database
 
-This module compares balances for all prisoners in the application database against JIFMS CCAM data and outputs the
+This module compares balances for all prisoners in the application database against JIFMS CCAM models and outputs the
 results to a Microsoft Excel file for review and subsequent processing.  The output file serves as input to the
 update_db_balances_from_JIFMS_for_all_prisoners module.
 """
@@ -18,8 +18,8 @@ import requests
 from sqlalchemy.exc import SAWarning
 from SCCM.bin import convert_to_excel as cte
 from SCCM.config import config
-from SCCM.data.case_balance import CaseBalance
-from SCCM.data.court_cases import CourtCase
+from SCCM.models.case_balance import CaseBalance
+from SCCM.models.court_cases import CourtCase
 from SCCM.services.db_session import DbSession
 
 
@@ -45,7 +45,7 @@ def get_ccam_account_information(case_num, session, base_url):
 
 def create_output_file(output_path):
     """
-    Creates Excel file used to store reconciliation data
+    Creates Excel file used to store reconciliation models
 
     :param output_path: path to create file
     :return: file storage location
@@ -78,7 +78,7 @@ def write_rows_to_output_file(file, comparison_list):
     """
     Writes balance information to Excel file
     :param file: path to Excel file
-    :param comparison_list: reconciliation data row
+    :param comparison_list: reconciliation models row
     """
 
     wb = openpyxl.load_workbook(file)
@@ -110,7 +110,7 @@ def get_ccam_balances(payments):
     """
     # FIXME : Need to filter out OVP line (overpayment) so as not to overinflate amount assessed
     try:
-        df = pd.DataFrame.from_dict(payments['data'])
+        df = pd.DataFrame.from_dict(payments['models'])
         party_code = {'Party Code': df['prty_cd'][0]}
         df = df.drop(
             ['ecf_case_num', 'case_titl', 'acct_cd', 'prty_num', 'prty_nm', 'scty_org', 'debt_typ_lnum', 'debt_typ',

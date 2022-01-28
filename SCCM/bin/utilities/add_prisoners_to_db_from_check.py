@@ -7,7 +7,7 @@ from SCCM.config.config_model import PLRASettings
 from SCCM.bin.ccam_lookup import CCAMSettings
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, get_files as gf
 
-from SCCM.models.prisoner_schema import PrisonerCreate
+from SCCM.schemas.prisoner_schema import PrisonerCreate
 from SCCM.services import crud
 
 
@@ -25,7 +25,7 @@ def main():
     filenames = gf.choose_files_for_import()
 
     for idx, file in enumerate(filenames):
-        # Prepare data from Excel check file
+        # Prepare models from Excel check file
         wb = cte.open_xls_file(file)
         sheet = wb['Sheet']
         df = pd.DataFrame(sheet.values)
@@ -50,7 +50,7 @@ def main():
         # Get case information and retreive balances from CCAM
         import SCCM.services.prisoner_services as ps
         import SCCM.services.case_services as cs
-        from SCCM.models.balance import Balance
+        from SCCM.schemas.balance import Balance
         for i, p in enumerate(prisoner_list):
             p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
             p = cs.get_prisoner_case_numbers(p)

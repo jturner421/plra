@@ -1,14 +1,12 @@
 import os
 from collections import Counter
-from decimal import Decimal
-from typing import Optional
 
 import fuzz as fuzz
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
-import SCCM.bin.dataframe_cleanup as dc
-import SCCM.models.prisoner_schema as pSchema
+import SCCM.services.dataframe_cleanup as dc
+import SCCM.schemas.prisoner_schema as pSchema
 
 suffix_list = dc.populate_suffix_list()
 

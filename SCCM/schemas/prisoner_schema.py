@@ -1,7 +1,7 @@
 from typing import Optional, List
 from decimal import Decimal
 from pydantic import BaseModel
-from SCCM.models.case_schema import CaseModel
+from SCCM.schemas.case_schema import CaseModel
 
 
 class PrisonerBase(BaseModel):

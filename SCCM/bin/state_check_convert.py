@@ -3,22 +3,22 @@ from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import argparse
 
-from SCCM.services.case_services import initialize_balances
+import SCCM.services.initiate_global_db_session
 from SCCM.services.db_session import DbSession
-from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, dataframe_cleanup as dc, \
-    get_files as gf
+from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, get_files as gf
+from SCCM.services.case_services import initialize_balances
 
-from SCCM.models.balance import Balance
+from SCCM.schemas.balance import Balance
 import SCCM.bin.payment_strategy as payment
 from SCCM.config.config_model import PLRASettings
 from SCCM.bin.ccam_lookup import CCAMSettings
-import SCCM.models.prisoner_schema as pSchema
+import SCCM.schemas.prisoner_schema as pSchema
 import SCCM.services.prisoner_services as ps
 import SCCM.services.case_services as cs
 from SCCM.services.database_services import prod_db_backup
 from SCCM.services.payment_services import prepare_ccam_upload_transactions, check_sum, prepare_deposit_number, \
     get_check_sum
-from SCCM.services import crud
+from SCCM.services import crud, dataframe_cleanup as dc
 
 
 def main():
@@ -80,9 +80,8 @@ def main():
             }
             prisoner_list.append(pSchema.PrisonerCreate(**items))
 
-        # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
-        # list to hold existing prisoners
-        db_prisoner_list = []
+        # Update models elements for payees and retrieve balances from internal DB if exists or CCAM API if not
+        db_prisoner_list = []  # list to hold existing prisoners
         for i, p in enumerate(prisoner_list):
             try:
                 amount_paid = p.amount_paid
@@ -128,7 +127,7 @@ def main():
                 ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
                 for case in p.cases_list:
                     try:
-                       case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
+                        case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
 
                     except KeyError:
                         cases_to_skip.append(case)
@@ -141,7 +140,7 @@ def main():
                 if party_code:
                     p.vendor_code = party_code
 
-            # Process Payments and find overpayments
+            # Process Payments and identify overpayments
             number_of_cases_for_prisoner = len(p.cases_list)
             if number_of_cases_for_prisoner == 0:
                 context = payment.Context(payment.OverPaymentProcess())
@@ -155,8 +154,10 @@ def main():
                 context = payment.Context(payment.SingleCasePaymentProcess())
                 p = context.process_payment(p, int(check_number))
 
+    # Process new transactions for Excel output
     payment_records = prepare_ccam_upload_transactions(prisoner_list)
 
+    # Create CCAM upload file in Excel format
     cte.write_rows_to_output_file(excel_file, payment_records, deposit_num, check_date)
 
     # add prisoners to database

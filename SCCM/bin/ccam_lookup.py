@@ -8,7 +8,7 @@ import json
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
 
-from SCCM.data.court_cases import CourtCase
+from SCCM.models.court_cases import CourtCase
 from SCCM.bin.retry import retry
 
 log = logging.getLogger('urllib3')
@@ -26,6 +26,7 @@ HTTPConnection.debuglevel = 1
 class CCAMSettings(BaseSettings):
     """
     Pydantic model for managing CCAM API settings
+    ccam.env stored in project root
     """
     ccam_username: str = Field(..., env='CCAM_USERNAME')
     ccam_password: SecretStr = Field(..., env='CCAM_PASSWORD')
@@ -57,8 +58,6 @@ class CCAMSession:
         return self.session
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        # if int(response.headers['Keep-Alive'].split(',')[1].split('=')[-1]) <= 20:
-        #     session.close()
         self.session.close()
 
 
@@ -66,6 +65,7 @@ class CCAMSession:
 def get_ccam_account_information(cases, **kwargs):
     """
     Retrieves JIFMS CCAM information for case via API call
+
     :param cases: case object
 
     :return: dictionary of account balances for requested case
@@ -85,39 +85,27 @@ def get_ccam_account_information(cases, **kwargs):
             headers=headers,
             params=data).json()
 
-        ccam_data = response["data"]
+        ccam_data = response["models"]
+
+        # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
+        # url so we need to rely on total pages embedded in the metadata
         for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
             data = {"caseNumberList": cases, "page": page}
             response = session.get(
                 settings.base_url,
                 headers=headers,
                 params=data).json()
-            ccam_data.extend(response["data"])
+            ccam_data.extend(response["models"])
 
     return ccam_data
-
-
-def insert_ccam_account_balances(p, db_session):
-    """
-    Inserts JIFMS CCAM balances for current payee and identified case
-    :param p: Person object
-    :param db_session: SQLAlchemy session
-    """
-    # get DB session
-    s = db_session
-    result = s.query(CourtCase).filter(CourtCase.ecf_case_num == p.orig_case_number).first()
-    balances = [p.ccam_balance["Total Owed"], p.ccam_balance["Total Collected"], p.ccam_balance["Total Outstanding"]]
-    result.case_balance.append(CaseBalance(court_case_id=result.id, amount_assessed=balances[0],
-                                           amount_collected=balances[1], amount_owed=balances[2]))
-    s.commit()
-    s.close()
 
 
 def sum_account_balances(payments):
     """
     Totals CCAM payment lines and updates prison object with payment information as a Python List
+
     :param payments: List of individual payment lines for a case
-    :return: None
+    :return: case balances and party code
     """
 
     # create a pandas dataframe
@@ -138,33 +126,4 @@ def sum_account_balances(payments):
     accounts.set_index(['case_num'], inplace=True)
     balances = balances.join(accounts.acct_cd, how='left')
 
-    # ccam_account_balance = pd.Series.to_dict(balances)
     return balances, party_code.prty_cd.values[0]
-
-
-OverPaymentInfo = collections.namedtuple('OverPaymentInfo', 'exists, amount_overpaid')
-
-
-def check_for_overpayment(prisoner):
-    """
-    Calculates overpayment for payment if exists
-
-    """
-    try:
-        if prisoner.amount <= prisoner.current_case.case_balance[0].amount_owed:
-            overpayment = False
-            check_overpaid = OverPaymentInfo(exists=overpayment, amount_overpaid=0.00)
-            prisoner.overpayment = check_overpaid
-            return prisoner
-        else:
-            overpayment = True
-            amount_overpaid = prisoner.current_case.case_balance[0].amount_owed - prisoner.amount
-            check_overpaid = OverPaymentInfo(exists=overpayment, amount_overpaid=amount_overpaid)
-            prisoner.overpayment = check_overpaid
-            return prisoner
-    except AttributeError:
-        overpayment = True
-        amount_overpaid = prisoner.amount
-        check_overpaid = OverPaymentInfo(exists=overpayment, amount_overpaid=amount_overpaid)
-        prisoner.overpayment = check_overpaid
-        return prisoner

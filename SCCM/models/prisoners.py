@@ -5,7 +5,7 @@ import factory
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 
-from SCCM.data.modelbase import SqlAlchemyBase
+from SCCM.models.modelbase import SqlAlchemyBase
 
 
 # each table needs to be represented by a class

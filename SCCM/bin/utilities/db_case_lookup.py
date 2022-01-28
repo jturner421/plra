@@ -8,7 +8,7 @@ from sqlalchemy.exc import SAWarning
 from decimal import *
 
 from SCCM.config import config
-from SCCM.data.court_cases import CourtCase
+from SCCM.models.court_cases import CourtCase
 from SCCM.services.db_session import DbSession
 
 # TODO - rewrite

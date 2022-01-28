@@ -11,7 +11,7 @@ from xlrd.timemachine import xrange
 
 
 def _create_styles(workbook):
-    data = NamedStyle(name='data')
+    data = NamedStyle(name='models')
     data.font = Font(name='Calibri', bold=False, size=11, color="000000")
     workbook.add_named_style(data)
     return workbook
@@ -25,8 +25,6 @@ def open_xls_file(filename):
     """
     # TODO: Check for UnicodeDecodeError and handle
     book = xlrd.open_workbook(filename)
-    book_sheet_names = book.sheet_names()
-    index = 0
     index = 0
     nrows, ncols = 0, 0
     while nrows * ncols == 0:
@@ -162,7 +160,7 @@ def get_shortened_name(name):
                 hyph_lastname = f"{hyph_initial_lastname}-{hyph_lastname[1]}"
                 revised_split_name = [split_name[0], hyph_lastname]
                 shortened_name = " ".join(revised_split_name)
-            except:
+            except AttributeError:
                 print(f"{name} cannot be shortened to comply with CCAM")
         name = shortened_name
     return name
@@ -225,7 +223,7 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
         sheet.cell(row=rownum, column=11).value = -Decimal(p['prisoner'].amount_paid)
     for c in range(1, 9):
         if c not in [5, 8, 9, 10]:
-            sheet.cell(row=rownum, column=c).style = 'data'
+            sheet.cell(row=rownum, column=c).style = 'models'
         else:
             sheet.cell(row=rownum, column=c).number_format = '$#,##0.00'
     return sheet.cell
@@ -241,9 +239,6 @@ def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
     sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].overpayment['transaction amount'])
     sheet.cell(row=rownum, column=6).value = deposit_num
     sheet.cell(row=rownum, column=7).value = p['prisoner'].overpayment['ccam_case_num']
-    # sheet.cell(row=rownum, column=8).value = p['prisoner'].overpayment['assessed']
-    # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['collected']
-    # sheet.cell(row=rownum, column=9).value = p['prisoner'].overpayment['outstanding']
     sheet.cell(row=rownum, column=11).value = Decimal(p['prisoner'].refund)
     return sheet.cell
 
@@ -251,7 +246,8 @@ def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
 def convert_sheet_to_dataframe(sheet):
     """
     Takes Openpyxl sheet with prisoner payments, converts to panda dataframe, and cleans up for futher processing
-    :param sheet: Sheet object containing prisoner payment data
+
+    :param sheet: Sheet object containing prisoner payment models
     :return: dataframe of payments
     """
     df = pd.DataFrame(sheet.values)

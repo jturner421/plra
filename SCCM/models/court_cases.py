@@ -2,8 +2,8 @@ import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 
-from SCCM.data.modelbase import SqlAlchemyBase
-from SCCM.data.prisoners import Prisoner
+from SCCM.models.modelbase import SqlAlchemyBase
+from SCCM.models.prisoners import Prisoner
 
 
 class CourtCase(SqlAlchemyBase):

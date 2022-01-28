@@ -2,9 +2,9 @@
 Populates database with lookup values used by the application
 """
 
-from SCCM.data.case_filter import CaseFilter
+from SCCM.models.case_filter import CaseFilter
 from SCCM.services.db_session import DbSession
-from SCCM.data.suffix import SuffixTable
+from SCCM.models.suffix import SuffixTable
 
 
 

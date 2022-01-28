@@ -2,7 +2,7 @@ import datetime
 
 import sqlalchemy as sa
 
-from SCCM.data.modelbase import SqlAlchemyBase
+from SCCM.models.modelbase import SqlAlchemyBase
 
 
 class SuffixTable(SqlAlchemyBase):

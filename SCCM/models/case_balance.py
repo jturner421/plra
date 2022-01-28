@@ -3,8 +3,8 @@ import datetime
 import sqlalchemy as sa
 from sqlalchemy import orm
 
-from SCCM.data.court_cases import CourtCase
-from SCCM.data.modelbase import SqlAlchemyBase
+from SCCM.models.court_cases import CourtCase
+from SCCM.models.modelbase import SqlAlchemyBase
 
 
 class CaseBalance(SqlAlchemyBase):

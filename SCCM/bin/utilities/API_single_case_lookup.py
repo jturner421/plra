@@ -6,7 +6,7 @@ import pydantic.errors
 
 from SCCM.bin.ccam_lookup import get_ccam_account_information, CCAMSettings, sum_account_balances
 from SCCM.bin.convert_to_excel import format_case_num
-from SCCM.models.case_schema import CaseCreate
+from SCCM.schemas.case_schema import CaseCreate
 
 
 def main():

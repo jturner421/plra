@@ -1,5 +1,5 @@
-from SCCM.data.case_filter import CaseFilter
-from SCCM.data.suffix import SuffixTable
+from SCCM.models.case_filter import CaseFilter
+from SCCM.models.suffix import SuffixTable
 from SCCM.services.db_session import DbSession
 from sqlalchemy import select
 
@@ -32,15 +32,10 @@ def populate_cases_filter_list():
     return case_filter_list
 
 
-# Fixme - No longer needed for excel files
-def strip_out_dollar_signs(dframe):
-    amount_stripped = [x.strip('$') for x in dframe.Amount]  # strip out dollar signs
-    return amount_stripped
-
-
 def aggregate_prisoner_payment_amounts(dframe):
     """
     Totals paid amounts per payee to apply to oldest active case
+
     :param dframe: Dateframe from state check detail
     :return: Dataframe with aggregate amounts
     """
@@ -49,13 +44,6 @@ def aggregate_prisoner_payment_amounts(dframe):
     df_names = dframe
     df_names = df_names.drop('Amount', axis=1)
     df_names = df_names.drop_duplicates()
-
-    # scan errors may result in duplicate DOC #'s which throws off totals.
-    # Fixme - This is probably uneccessary for Excel file. The drop duplicates command should suffice
-    doc_dupes = df_names.DOC.duplicated()  # creates bool True if duplicate value
-    for i, v in doc_dupes.iteritems():
-        if v:
-            df_names = df_names.drop(i, axis=0)
 
     # Get aggregate sum of payments indexed by DOC#
     dframe_sum = dframe.groupby('DOC', as_index=False).agg({'Amount': 'sum'})

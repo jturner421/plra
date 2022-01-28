@@ -3,8 +3,8 @@ import datetime
 import sqlalchemy as sa
 from sqlalchemy.orm import relationship, backref
 
-from SCCM.data.court_cases import CourtCase
-from SCCM.data.modelbase import SqlAlchemyBase
+from SCCM.models.court_cases import CourtCase
+from SCCM.models.modelbase import SqlAlchemyBase
 
 
 class CaseTransaction(SqlAlchemyBase):

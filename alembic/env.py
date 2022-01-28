@@ -5,9 +5,9 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from SCCM.data.modelbase import SqlAlchemyBase
+from SCCM.models.modelbase import SqlAlchemyBase
 from SCCM.config.config_model import PLRASettings
-import SCCM.data.__all_models
+import SCCM.models.__all_models
 
 
 # this is the Alembic Config object, which provides

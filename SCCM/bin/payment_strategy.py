@@ -2,9 +2,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal, ROUND_HALF_UP
 
-from SCCM.models.case_schema import CaseBase
-import SCCM.models.transaction_schema as ts
-from SCCM.models.prisoner_schema import PrisonerCreate
+from SCCM.schemas.case_schema import CaseBase
+import SCCM.schemas.transaction_schema as ts
+from SCCM.schemas.prisoner_schema import PrisonerCreate
 import SCCM.services.payment_services as payment
 
 cents = Decimal('0.01')

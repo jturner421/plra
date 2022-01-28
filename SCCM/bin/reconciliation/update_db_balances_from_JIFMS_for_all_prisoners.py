@@ -9,8 +9,8 @@ import openpyxl
 import requests
 
 from SCCM.config import config
-from SCCM.data.case_reconciliation import CaseReconciliation
-from SCCM.data.court_cases import CourtCase
+from SCCM.models.case_reconciliation import CaseReconciliation
+from SCCM.models.court_cases import CourtCase
 from SCCM.services.db_session import DbSession
 
 

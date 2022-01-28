@@ -2,12 +2,12 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
-from SCCM.data.prisoners import Prisoner
-from SCCM.models import prisoner_schema
-from SCCM.data import prisoners
-from SCCM.data import court_cases
-from SCCM.data import case_transaction
-from SCCM.models.case_schema import CaseModel
+from SCCM.models.prisoners import Prisoner
+from SCCM.schemas import prisoner_schema
+from SCCM.models import prisoners
+from SCCM.models import court_cases
+from SCCM.models import case_transaction
+from SCCM.schemas.case_schema import CaseModel
 
 
 def create_prisoner(db: Session, prisoner: prisoner_schema.PrisonerCreate):

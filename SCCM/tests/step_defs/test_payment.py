@@ -2,9 +2,9 @@ from pytest_bdd import scenario, scenarios, given, when, then, parsers
 import pytest
 from decimal import Decimal, ROUND_HALF_UP
 
-from SCCM.models.prisoner_schema import PrisonerCreate
-from SCCM.models.case_schema import CaseCreate
-from SCCM.models.case_schema import Balance
+from SCCM.schemas.prisoner_schema import PrisonerCreate
+from SCCM.schemas.case_schema import CaseCreate
+from SCCM.schemas.case_schema import Balance
 
 cents = Decimal('0.01')
 

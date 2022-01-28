@@ -1,9 +1,9 @@
 from decimal import Decimal
 from typing import Optional
 
-from SCCM.models.balance import Balance
-import SCCM.models.transaction_schema as ts
-# from SCCM.models.person import PrisonerModel
+from SCCM.schemas.balance import Balance
+import SCCM.schemas.transaction_schema as ts
+# from SCCM.schemas.person import PrisonerModel
 
 from pydantic import BaseModel, constr
 

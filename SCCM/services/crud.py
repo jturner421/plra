@@ -89,6 +89,6 @@ def add_transactions_to_database(db: Session, prisoner_list, db_prisoner_list: L
             for t in new_transactions:
                 update_case_balances(db, t, db_prisoner_list)
         else:
-            db_prisoner = create_prisoner(db_session, p)
-            add_cases_for_prisoner(db_session, db_prisoner, p)
+            db_prisoner = create_prisoner(db, p)
+            add_cases_for_prisoner(db, db_prisoner, p)
     db.commit()

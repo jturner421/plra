@@ -29,7 +29,7 @@ def main():
     formatted_case_num = format_case_num(case)
     ccam_balances = get_ccam_account_information(formatted_case_num, settings=settings, name=case_number)
     ccam_summary_balance, party_code = sum_account_balances(ccam_balances)
-    prisoner_name = {c['prty_nm'] for c in ccam_balances}
+    prisoner_name = {c['PRTY_NM'] for c in ccam_balances}
     balance = ccam_summary_balance.to_dict()
     print(f'\n \nCCAM Balance for case {str.upper(case_number)} for {prisoner_name} is \n'
           f"Principal Owed: {balance['Total Owed']}\n"

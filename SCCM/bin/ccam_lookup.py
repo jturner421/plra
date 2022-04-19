@@ -85,7 +85,7 @@ def get_ccam_account_information(cases, **kwargs):
             headers=headers,
             params=data).json()
 
-        ccam_data = response["models"]
+        ccam_data = response["data"]
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
@@ -95,7 +95,7 @@ def get_ccam_account_information(cases, **kwargs):
                 settings.base_url,
                 headers=headers,
                 params=data).json()
-            ccam_data.extend(response["models"])
+            ccam_data.extend(response["data"])
 
     return ccam_data
 
@@ -113,17 +113,17 @@ def sum_account_balances(payments):
     df = df.fillna(0)
 
     # get party code
-    party_code = df.drop_duplicates('prty_cd')
+    party_code = df.drop_duplicates('PRTY_CD')
 
     # get account sums grouped by case number
-    balances = df.groupby(df.case_num).sum()
-    balances = balances.drop(['debt_typ_lnum'], axis=1)
+    balances = df.groupby(df.CASE_NUM).sum()
+    balances = balances.drop(['DEBT_TYP_LNUM'], axis=1)
     balances.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
 
     # retrieve account codes and add to balances
-    accounts = df.drop_duplicates('case_num', keep='last')
+    accounts = df.drop_duplicates('CASE_NUM', keep='last')
     accounts.reset_index(drop=True, inplace=True)
-    accounts.set_index(['case_num'], inplace=True)
-    balances = balances.join(accounts.acct_cd, how='left')
+    accounts.set_index(['CASE_NUM'], inplace=True)
+    balances = balances.join(accounts.ACCT_CD, how='left')
 
-    return balances, party_code.prty_cd.values[0]
+    return balances, party_code.PRTY_CD.values[0]

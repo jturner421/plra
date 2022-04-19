@@ -46,7 +46,7 @@ def get_prisoner_case_numbers(p):
 def initialize_balances(case, cases_dict, ccam_summary_balance, cents):
     case.balance = Balance()
     balance_key = cases_dict[case.ecf_case_num].split('-')[0]
-    case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
+    case.acct_cd = ccam_summary_balance.loc[balance_key]['ACCT_CD']
     case.ccam_case_num = cases_dict[case.ecf_case_num]
     ccam_balance = ccam_summary_balance.loc[balance_key].to_dict()
     case.balance.amount_assessed = Decimal(ccam_balance['Total Owed']).quantize(cents,

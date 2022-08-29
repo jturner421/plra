@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import argparse
 
 import SCCM.services.initiate_global_db_session
+from SCCM.models.court_cases import CourtCase
 from SCCM.services.db_session import DbSession
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, get_files as gf
 from SCCM.services.case_services import initialize_balances
@@ -85,10 +86,35 @@ def main():
         for i, p in enumerate(prisoner_list):
             try:
                 amount_paid = p.amount_paid
+                # retrieve prisoner from internal DB
                 prisonerOrm = crud.get_prisoner_with_active_case(db_session, p.doc_num, p.legal_name)
 
                 # initialization path for prisoner that exists in the database
                 if prisonerOrm:
+                    try:
+                        p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
+                        # check if new cases added on the network for existing prisoner
+                        p = cs.get_prisoner_case_numbers(p)
+                        if len(p.cases_list) > len(prisonerOrm.cases_list):
+                            s = set(x.ecf_case_num for x in prisonerOrm.cases_list)
+                            new_cases = [x for x in p.cases_list if x.ecf_case_num not in s]
+                            cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in new_cases}
+                            ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
+                            ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve,
+                                                                              settings=ccam_settings,
+                                                                              name=p.legal_name)
+                            ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+                            for case in new_cases:
+                                case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
+                                prisonerOrm.cases_list.append(CourtCase(acct_cd=case.acct_cd,
+                                                                        amount_assessed=case.balance.amount_assessed,
+                                                                        amount_collected=case.balance.amount_collected,
+                                                                        amount_owed=case.balance.amount_owed,
+                                                                        case_comment=case.case_comment,
+                                                                        ccam_case_num=case.ccam_case_num,
+                                                                        ecf_case_num=case.ecf_case_num))
+                    except:
+                        pass
                     # save to list for future lookup
                     db_prisoner_list.append(prisonerOrm)
 

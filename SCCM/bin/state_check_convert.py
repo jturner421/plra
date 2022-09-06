@@ -29,12 +29,12 @@ def main():
     args = parser.parse_args()
 
     if args.mode == 'dev':
-        config_file = '../config/dev.env'
+        config_file = 'SCCM/config/dev.env'
         settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
     db_session = DbSession.factory()
-    ccam_settings = CCAMSettings(_env_file='../ccam.env', _env_file_encoding='utf-8')
-
+    ccam_settings = CCAMSettings(_env_file='SCCM/ccam.env', _env_file_encoding='utf-8')
+    filter_list = dc.populate_cases_filter_list()
     # Ask user to choose one or more files for processing
     filenames = gf.choose_files_for_import()
 
@@ -98,7 +98,7 @@ def main():
                     try:
                         p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
                         # check if new cases added on the network for existing prisoner
-                        p = cs.get_prisoner_case_numbers(p)
+                        p = cs.get_prisoner_case_numbers(p, filter_list)
                         if len(p.cases_list) > len(prisonerOrm.cases_list):
                             s = set(x.ecf_case_num for x in prisonerOrm.cases_list)
                             new_cases = [x for x in p.cases_list if x.ecf_case_num not in s]
@@ -124,8 +124,8 @@ def main():
                     db_prisoner_list.append(prisonerOrm)
 
                     # # convert to pydantic model for further processing
-                    # p = pSchema.PrisonerModel.from_orm(prisonerOrm)
-                    # p.amount_paid = amount_paid
+                    p = pSchema.PrisonerModel.from_orm(prisonerOrm)
+                    p.amount_paid = amount_paid
 
                     for case in p.cases_list:
                         if case.case_comment == 'ACTIVE':
@@ -149,7 +149,7 @@ def main():
             # initialization path for prisoner that does not exist in the database
             if not prisoner_found:
                 p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
-                p = cs.get_prisoner_case_numbers(p)
+                p = cs.get_prisoner_case_numbers(p, filter_list)
                 cases_to_skip = []
                 cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in p.cases_list}
 
@@ -193,6 +193,8 @@ def main():
     cte.write_rows_to_output_file(excel_file, payment_records, deposit_num, check_date)
 
     # add prisoners to database
+    print('Adding prisoners to database. Check Excel File for errors.')
+    input('Press Enter to continue...')
     crud.add_transactions_to_database(db_session, prisoner_list, db_prisoner_list)
 
 

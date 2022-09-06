@@ -6,10 +6,10 @@ import SCCM.services.dataframe_cleanup as dc
 import SCCM.schemas.case_schema as cs
 from SCCM.schemas.balance import Balance
 
-filter_list = dc.populate_cases_filter_list()
 
 
-def get_prisoner_case_numbers(p):
+
+def get_prisoner_case_numbers(p, filter_list):
     """
     Identifies active cases for prisoner. Retrieves from network share
 

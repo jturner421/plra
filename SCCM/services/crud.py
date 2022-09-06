@@ -28,6 +28,7 @@ def get_prisoner_with_active_case(db: Session, doc_num: int, legal_name: str):
     result = db.query(prisoners.Prisoner).filter(prisoners.Prisoner.doc_num == doc_num).first()
     if result:
         result.cases_list = [case for case in result.cases_list if case.case_comment == 'ACTIVE']
+        db.close()
         return result
     else:
         return None

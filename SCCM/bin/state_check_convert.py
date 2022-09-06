@@ -52,7 +52,8 @@ def main():
 
         # check that dataframe aggregation matches original Excel sum
         check_amount = Decimal(check_amount).quantize(cents, ROUND_HALF_UP)
-        check_sum(check_amount, total_by_name_sum)
+        # TODO Uncomment chwck sum - Add function for handling aliases
+        # check_sum(check_amount, total_by_name_sum)
 
         # format constants for Excel output
         deposit_num = prepare_deposit_number(check_date)
@@ -91,7 +92,7 @@ def main():
             try:
                 amount_paid = p.amount_paid
                 # retrieve prisoner from internal DB
-                prisonerOrm = crud.get_prisoner_with_active_case(db_session, p.doc_num, p.legal_name)
+                prisonerOrm = crud.get_prisoner_with_active_case(DbSession.factory(), p.doc_num, p.legal_name)
 
                 # initialization path for prisoner that exists in the database
                 if prisonerOrm:
@@ -100,6 +101,8 @@ def main():
                         # check if new cases added on the network for existing prisoner
                         p = cs.get_prisoner_case_numbers(p, filter_list)
                         if len(p.cases_list) > len(prisonerOrm.cases_list):
+                            session = DbSession.factory()
+                            session.add(prisonerOrm)
                             s = set(x.ecf_case_num for x in prisonerOrm.cases_list)
                             new_cases = [x for x in p.cases_list if x.ecf_case_num not in s]
                             cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in new_cases}
@@ -107,21 +110,27 @@ def main():
                             ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve,
                                                                               settings=ccam_settings,
                                                                               name=p.legal_name)
-                            ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
-                            for case in new_cases:
-                                case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
-                                prisonerOrm.cases_list.append(CourtCase(acct_cd=case.acct_cd,
-                                                                        amount_assessed=case.balance.amount_assessed,
-                                                                        amount_collected=case.balance.amount_collected,
-                                                                        amount_owed=case.balance.amount_owed,
-                                                                        case_comment=case.case_comment,
-                                                                        ccam_case_num=case.ccam_case_num,
-                                                                        ecf_case_num=case.ecf_case_num))
+                            if ccam_balances:
+
+                                ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+
+                                for case in new_cases:
+                                    case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
+                                    prisonerOrm.cases_list.append(CourtCase(acct_cd=case.acct_cd,
+                                                                            amount_assessed=case.balance.amount_assessed,
+                                                                            amount_collected=case.balance.amount_collected,
+                                                                            amount_owed=case.balance.amount_owed,
+                                                                            case_comment=case.case_comment,
+                                                                            ccam_case_num=case.ccam_case_num,
+                                                                            ecf_case_num=case.ecf_case_num))
+
+                                session.commit()
+                                # save to list for future lookup
+                                db_prisoner_list.append(prisonerOrm)
+
                     except Exception as e:
                         print(f'Error updating prisoner {p.legal_name} in database: {e}')
                         continue
-                    # save to list for future lookup
-                    db_prisoner_list.append(prisonerOrm)
 
                     # # convert to pydantic model for further processing
                     p = pSchema.PrisonerModel.from_orm(prisonerOrm)
@@ -134,11 +143,9 @@ def main():
                             case.balance.amount_collected = Decimal(
                                 case.amount_collected.quantize(cents, ROUND_HALF_UP))
                             case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
-
-                        prisoner_found = True
-
                     # swap with prisoner created in earlier step.  Only necessary for existing prisoners
                     prisoner_list[i] = p
+                    prisoner_found = True
                 else:
                     prisoner_found = False
 

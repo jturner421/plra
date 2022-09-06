@@ -2,24 +2,23 @@ from typing import List
 
 from sqlalchemy.orm import Session
 
+from SCCM.models.court_cases import CourtCase
 from SCCM.models.prisoners import Prisoner
 from SCCM.schemas import prisoner_schema
 from SCCM.models import prisoners
 from SCCM.models import court_cases
 from SCCM.models import case_transaction
 from SCCM.schemas.case_schema import CaseModel
+from SCCM.services.db_session import DbSession
 
 
-def create_prisoner(db: Session, prisoner: prisoner_schema.PrisonerCreate):
+def create_prisoner(prisoner: prisoner_schema.PrisonerCreate):
     db_prisoner = prisoners.Prisoner(
         doc_num=prisoner.doc_num,
         judgment_name=prisoner.judgment_name,
         legal_name=prisoner.legal_name,
         vendor_code=prisoner.vendor_code
     )
-    db.add(db_prisoner)
-    db.flush()
-    db.refresh(db_prisoner)
     return db_prisoner
 
 
@@ -34,7 +33,7 @@ def get_prisoner_with_active_case(db: Session, doc_num: int, legal_name: str):
         return None
 
 
-def add_cases_for_prisoner(db: Session, db_prisoner: prisoners.Prisoner,
+def add_cases_for_prisoner(db_prisoner: prisoners.Prisoner,
                            p: prisoner_schema.PrisonerCreate) -> prisoners.Prisoner:
     """
     Adds processed cases to prisoner database model
@@ -70,26 +69,33 @@ def _create_transaction(db: Session, db_prisoner: prisoners.Prisoner, p: prisone
     pass
 
 
-def update_case_balances(db: Session, case: CaseModel, db_prisoner_list: List[Prisoner]):
+def update_case_balances(case: CaseModel, db_prisoner_list: List[Prisoner]):
     pris_index_loc = next(i for i, v in enumerate(db_prisoner_list) if v.id == case.prisoner_id)
     prisoner = db_prisoner_list[pris_index_loc]
     case_index_loc = next(i for i, v in enumerate(prisoner.cases_list) if v.id == case.id)
     case_db = prisoner.cases_list[case_index_loc]
+
     case_db.amount_collected = case.balance.amount_collected
-    case_db.amount_owed = case.balance.amount_owed # TODO Check for zero balance and marked case paid
+    case_db.amount_owed = case.balance.amount_owed
+    return case_db
+
+
+def update_case_transactions(case: CaseModel, case_db: CourtCase):
     case_db.case_transactions.append(case_transaction.CaseTransaction(
         check_number=case.transaction.check_number,
         amount_paid=case.transaction.amount_paid
     ))
+    return case_db
 
-
-def add_transactions_to_database(db: Session, prisoner_list, db_prisoner_list: List[Prisoner]):
-    for p in prisoner_list:
-        if p.exists:
-            new_transactions = [case for case in p.cases_list if case.transaction]
-            for t in new_transactions:
-                update_case_balances(db, t, db_prisoner_list)
-        else:
-            db_prisoner = create_prisoner(db, p)
-            add_cases_for_prisoner(db, db_prisoner, p)
-    db.commit()
+# def add_transactions_to_database(prisoner_list, db_prisoner_list: List[Prisoner]):
+#     for p in prisoner_list:
+#         if p.exists:
+#             new_transactions = [case for case in p.cases_list if case.transaction]
+#             for t in new_transactions:
+#                 case_db = update_case_balances(t, db_prisoner_list)
+#                 session.add(case_db)
+#         else:
+#             db_prisoner = create_prisoner(session, p)
+#             db_prisoner = add_cases_for_prisoner(db_prisoner, p)
+#             session.add(db_prisoner)
+#     db.commit()

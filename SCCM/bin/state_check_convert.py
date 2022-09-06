@@ -5,7 +5,9 @@ import argparse
 import os
 
 import SCCM.services.initiate_global_db_session
+from SCCM.models import case_transaction
 from SCCM.models.court_cases import CourtCase
+from SCCM.services.crud import update_case_balances, create_prisoner, add_cases_for_prisoner, update_case_transactions
 from SCCM.services.db_session import DbSession
 from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, get_files as gf
 from SCCM.services.case_services import initialize_balances
@@ -75,7 +77,6 @@ def main():
         if not os.path.exists(destination):
             prod_db_backup(original, destination)
 
-
         # Instantiate prisoner objects
         prisoner_list = []
         for i, (key, value) in enumerate(prisoner_dict.items()):
@@ -126,7 +127,7 @@ def main():
 
                                 session.commit()
                                 # save to list for future lookup
-                                db_prisoner_list.append(prisonerOrm)
+                        db_prisoner_list.append(prisonerOrm)
 
                     except Exception as e:
                         print(f'Error updating prisoner {p.legal_name} in database: {e}')
@@ -143,9 +144,10 @@ def main():
                             case.balance.amount_collected = Decimal(
                                 case.amount_collected.quantize(cents, ROUND_HALF_UP))
                             case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
+                        prisoner_found = True
                     # swap with prisoner created in earlier step.  Only necessary for existing prisoners
                     prisoner_list[i] = p
-                    prisoner_found = True
+
                 else:
                     prisoner_found = False
 
@@ -201,8 +203,34 @@ def main():
 
     # add prisoners to database
     print('Adding prisoners to database. Check Excel File for errors.')
-    input('Press Enter to continue...')
-    crud.add_transactions_to_database(db_session, prisoner_list, db_prisoner_list)
+    # input('Press Enter to continue...')
+    with DbSession.factory() as session:
+        session.begin()
+        try:
+            for p in prisoner_list:
+                if p.exists:
+                    # from SCCM.models.prisoners import Prisoner
+                    # result = session.query(Prisoner).filter(Prisoner.doc_num == p.doc_num).first()
+                    # session.add(result)
+
+                    new_transactions = [case for case in p.cases_list if case.transaction]
+                    for t in new_transactions:
+                        case_db = update_case_balances(t, db_prisoner_list)
+                        session.add(case_db)
+                        case_db.case_transactions.append(case_transaction.CaseTransaction(
+                            check_number=case.transaction.check_number,
+                            amount_paid=case.transaction.amount_paid
+                        ))
+                else:
+                    db_prisoner = create_prisoner(p)
+                    session.add(db_prisoner)
+                    db_prisoner = add_cases_for_prisoner(db_prisoner, p)
+                    # session.add(db_prisoner)
+        except:
+            session.rollback()
+            raise
+        else:
+            session.commit()
 
 
 if __name__ == '__main__':

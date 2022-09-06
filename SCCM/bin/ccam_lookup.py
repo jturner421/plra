@@ -113,17 +113,17 @@ def sum_account_balances(payments):
     df = df.fillna(0)
 
     # get party code
-    party_code = df.drop_duplicates('PRTY_CD')
+    party_code = df.drop_duplicates('prty_cd')
 
     # get account sums grouped by case number
-    balances = df.groupby(df.CASE_NUM).sum()
-    balances = balances.drop(['DEBT_TYP_LNUM'], axis=1)
+    balances = df.groupby(df.case_num).sum()
+    balances = balances.drop(['debt_typ_lnum'], axis=1)
     balances.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
 
     # retrieve account codes and add to balances
-    accounts = df.drop_duplicates('CASE_NUM', keep='last')
+    accounts = df.drop_duplicates('case_num', keep='last')
     accounts.reset_index(drop=True, inplace=True)
-    accounts.set_index(['CASE_NUM'], inplace=True)
-    balances = balances.join(accounts.ACCT_CD, how='left')
+    accounts.set_index(['case_num'], inplace=True)
+    balances = balances.join(accounts.acct_cd, how='left')
 
-    return balances, party_code.PRTY_CD.values[0]
+    return balances, party_code.prty_cd.values[0]

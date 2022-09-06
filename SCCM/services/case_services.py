@@ -11,7 +11,7 @@ filter_list = dc.populate_cases_filter_list()
 
 def get_prisoner_case_numbers(p):
     """
-    Identifies active cases for prisoner. Retrives from network share
+    Identifies active cases for prisoner. Retrieves from network share
 
     :return: oldest active case
     """
@@ -30,7 +30,7 @@ def get_prisoner_case_numbers(p):
                 case_comment='ACTIVE')
             )
 
-        # special processing for cases for mutliple prisoner cases
+        # special processing for cases for multiple prisoner cases
         except pydantic.ValidationError:
             str_split = c.split('-')
             case_party_number = str_split[-1]
@@ -46,7 +46,7 @@ def get_prisoner_case_numbers(p):
 def initialize_balances(case, cases_dict, ccam_summary_balance, cents):
     case.balance = Balance()
     balance_key = cases_dict[case.ecf_case_num].split('-')[0]
-    case.acct_cd = ccam_summary_balance.loc[balance_key]['ACCT_CD']
+    case.acct_cd = ccam_summary_balance.loc[balance_key]['acct_cd']
     case.ccam_case_num = cases_dict[case.ecf_case_num]
     ccam_balance = ccam_summary_balance.loc[balance_key].to_dict()
     case.balance.amount_assessed = Decimal(ccam_balance['Total Owed']).quantize(cents,

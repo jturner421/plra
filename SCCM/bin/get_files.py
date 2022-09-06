@@ -1,4 +1,7 @@
-from tkinter import Tk, filedialog
+from tkinter import *
+from tkinter import filedialog
+from tkinter import ttk, Tk
+
 
 
 def choose_files_for_import():

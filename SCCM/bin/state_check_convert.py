@@ -2,6 +2,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import argparse
+import os
 
 import SCCM.services.initiate_global_db_session
 from SCCM.models.court_cases import CourtCase
@@ -69,7 +70,10 @@ def main():
         # make backup of SQLite DB
         original = f'{settings.db_base_directory}{settings.db_file}'
         destination = f'{settings.db_backup_directory}/{settings.db_file}_{check_number}'
-        prod_db_backup(original, destination)
+        # Only make backup of DB the first time
+        if not os.path.exists(destination):
+            prod_db_backup(original, destination)
+
 
         # Instantiate prisoner objects
         prisoner_list = []
@@ -113,14 +117,15 @@ def main():
                                                                         case_comment=case.case_comment,
                                                                         ccam_case_num=case.ccam_case_num,
                                                                         ecf_case_num=case.ecf_case_num))
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f'Error updating prisoner {p.legal_name} in database: {e}')
+                        continue
                     # save to list for future lookup
                     db_prisoner_list.append(prisonerOrm)
 
-                    # convert to pydantic model for further processing
-                    p = pSchema.PrisonerModel.from_orm(prisonerOrm)
-                    p.amount_paid = amount_paid
+                    # # convert to pydantic model for further processing
+                    # p = pSchema.PrisonerModel.from_orm(prisonerOrm)
+                    # p.amount_paid = amount_paid
 
                     for case in p.cases_list:
                         if case.case_comment == 'ACTIVE':
@@ -137,8 +142,9 @@ def main():
                 else:
                     prisoner_found = False
 
-            except NoResultFound:
-                prisoner_found = False
+            except Exception as e:
+                print(f'Error processing prisoner {p.legal_name} in database: {e}')
+                continue
 
             # initialization path for prisoner that does not exist in the database
             if not prisoner_found:

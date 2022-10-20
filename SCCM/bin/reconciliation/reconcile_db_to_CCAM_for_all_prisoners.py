@@ -9,21 +9,34 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 import datetime
 from datetime import datetime
+from pathlib import Path
 import warnings
 
-import pandas as pd
-import sqlalchemy.orm.exc
-from sqlalchemy.exc import SAWarning
-from SCCM.bin import ccam_lookup as ccam
-import SCCM.services.initiate_global_db_session
+import sqlalchemy
+
 from SCCM.services.db_session import DbSession
-from SCCM.bin.ccam_lookup import CCAMSettings
 from SCCM.config.config_model import PLRASettings
-from SCCM.services.database_services import prod_db_backup
+from services.database_services import prod_db_backup
 from SCCM.models.prisoners import Prisoner
 from SCCM.schemas.balance import Balance
 from SCCM.models.court_cases import CourtCase
+from SCCM.bin import ccam_lookup as ccam
 from SCCM.models.case_reconciliation import CaseReconciliation
+from SCCM.bin.ccam_lookup import CCAMSettings
+
+
+# import pandas as pd
+# import sqlalchemy.orm.exc
+# from sqlalchemy.exc import SAWarning
+# from SCCM.bin import ccam_lookup as ccam
+# from SCCM.services.db_session import DbSession
+# from SCCM.bin.ccam_lookup import CCAMSettings
+
+# from SCCM.services.database_services import prod_db_backup
+# from SCCM.models.prisoners import Prisoner
+# from SCCM.schemas.balance import Balance
+# from SCCM.models.court_cases import CourtCase
+# from SCCM.models.case_reconciliation import CaseReconciliation
 
 
 def get_prisoners_from_db():
@@ -39,12 +52,10 @@ def get_prisoners_from_db():
 
 
 def main():
-    config_file = 'SCCM/config/dev.env'
-    settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
-    db_session = DbSession.factory()
+    env_file = Path.cwd() / 'config' / 'dev.env'
+    settings = PLRASettings(_env_file=env_file, _env_file_encoding='utf-8')
+    db_session = DbSession.global_init(db_file=settings.db_base_directory + settings.db_file )
 
-    # Establish configuration settings
-    ccam_settings = CCAMSettings(_env_file='SCCM/ccam.env', _env_file_encoding='utf-8')
 
     # make backup of SQLite DB
     original = f'{settings.db_base_directory}{settings.db_file}'
@@ -62,7 +73,7 @@ def main():
         try:
             for case in p.cases_list:
                 # retrieve current balance from CCAM
-                ccam_balances = ccam.get_ccam_account_information(case.ccam_case_num, settings=ccam_settings,
+                ccam_balances = ccam.get_ccam_account_information(case.ccam_case_num, settings=settings,
                                                                   name=p.legal_name)
                 ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
                 ccam_case_balances = Balance()

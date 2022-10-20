@@ -3,6 +3,7 @@ from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 import argparse
 import os
+from pathlib import Path
 
 import SCCM.services.initiate_global_db_session
 from SCCM.models import case_transaction
@@ -31,11 +32,12 @@ def main():
     args = parser.parse_args()
 
     if args.mode == 'dev':
-        config_file = 'SCCM/config/dev.env'
+        config_file = Path.cwd() / 'config' / 'dev.env'
+        # config_file = 'SCCM/config/dev.env'
         settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
     db_session = DbSession.factory()
-    ccam_settings = CCAMSettings(_env_file='SCCM/ccam.env', _env_file_encoding='utf-8')
+    # ccam_settings = CCAMSettings(_env_file='SCCM/ccam.env', _env_file_encoding='utf-8')
     filter_list = dc.populate_cases_filter_list()
     # Ask user to choose one or more files for processing
     filenames = gf.choose_files_for_import()
@@ -112,7 +114,7 @@ def main():
                             cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in new_cases}
                             ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
                             ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve,
-                                                                              settings=ccam_settings,
+                                                                              settings=settings,
                                                                               name=p.legal_name)
                             if ccam_balances:
 
@@ -166,7 +168,7 @@ def main():
                 cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in p.cases_list}
 
                 ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
-                ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=ccam_settings,
+                ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=settings,
                                                                   name=p.legal_name)
                 ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
                 for case in p.cases_list:

@@ -4,6 +4,7 @@ import requests
 from requests import Session
 from http.client import HTTPConnection
 import json
+from pathlib import Path
 
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
@@ -12,15 +13,15 @@ from SCCM.models.court_cases import CourtCase
 from SCCM.bin.retry import retry
 
 log = logging.getLogger('urllib3')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 
 # logging from urllib3 to console
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.WARN)
 log.addHandler(ch)
 
 # print statements from `http.client.HTTPConnection` to console/stdout
-HTTPConnection.debuglevel = 1
+# HTTPConnection.debuglevel = 1
 
 
 class CCAMSettings(BaseSettings):
@@ -35,7 +36,7 @@ class CCAMSettings(BaseSettings):
 
     class Config:
         case_sensitive = False
-        env_file = '../ccam.env'
+        env_file = Path.cwd() / 'config' / 'dev.env'
         env_file_encoding = 'utf-8'
 
 

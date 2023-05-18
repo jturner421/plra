@@ -52,6 +52,7 @@ def get_prisoners_from_db():
 
 
 def main():
+    # ToDo - make sure to change base url
     env_file = Path.cwd() / 'config' / 'dev.env'
     settings = PLRASettings(_env_file=env_file, _env_file_encoding='utf-8')
     db_session = DbSession.global_init(db_file=settings.db_base_directory + settings.db_file )

@@ -1,131 +1,44 @@
-import shutil
+from __future__ import annotations
 from datetime import datetime
-from decimal import *
-from pathlib import Path
-import sqlite3
+from decimal import Decimal, ROUND_HALF_UP
+import argparse
 import os
+from pathlib import Path
 
-import keyring
-import pandas as pd
-import requests
+import SCCM.services.initiate_global_db_session
+from SCCM.models import case_transaction
+from SCCM.models.court_cases import CourtCase
+from SCCM.services.crud import update_case_balances, create_prisoner, add_cases_for_prisoner, update_case_transactions
+from SCCM.services.db_session import DbSession
+from SCCM.bin import convert_to_excel as cte, ccam_lookup as ccam, get_files as gf
+from SCCM.services.case_services import initialize_balances
 
-from SCCM.bin import convert_to_excel as cte, pdf_extract as pdfe, ccam_lookup as ccam, dataframe_cleanup as dc, \
-    get_files as gf, prisoners
-from SCCM.config import config
-from SCCM.data.case_balance import CaseBalance
-from SCCM.data.case_filter import CaseFilter
-from SCCM.data.court_cases import CourtCase
-from SCCM.data.db_session import DbSession
-from SCCM.data.prisoners import Prisoner
+from SCCM.schemas.balance import Balance
+import SCCM.bin.payment_strategy as payment
+from SCCM.config.config_model import PLRASettings
+from SCCM.bin.ccam_lookup import CCAMSettings
+import SCCM.schemas.prisoner_schema as pSchema
+import SCCM.services.prisoner_services as ps
+import SCCM.services.case_services as cs
+from SCCM.services.database_services import prod_db_backup
+from SCCM.services.payment_services import prepare_ccam_upload_transactions, check_sum, prepare_deposit_number, \
+    get_check_sum
+from SCCM.services import crud, dataframe_cleanup as dc
 
-db_session = ''
-
-
-def convert_sheet_to_dataframe(sheet):
-    """
-    Takes Openpyxl sheet with prisoner payments, converts to panda dataframe, and cleans up for futher processing
-    :param sheet: Sheet object containing prisoner payment data
-    :return: dataframe of payments
-    """
-    df = pd.DataFrame(sheet.values)
-    dframe = df[[1, 2, 7]]
-    dframe.columns = ['DOC', 'Name', 'Amount']
-    dframe = pdfe.delete_header_row(dframe)
-    return dframe
-
-
-def progress(status, remaining, total):
-    print('Backing up Database')
-    print(f'Copied {total - remaining} of {total} pages...')
-
-
-def prod_db_backup(db_file, destination):
-    db_orig = sqlite3.connect(db_file)
-    db_backup = sqlite3.connect(destination)
-    with db_backup:
-        db_orig.backup(db_backup, pages=1, progress=progress)
-    db_backup.close()
-    db_orig.close()
-
-
-def prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name ):
-    print('An errror processing this check has occured. \n')
-    db_orig = sqlite3.connect(db_file)
-
-    backup = f'{db_backup_path}{db_backup_file_name}_backup.db'
-    db_backup = sqlite3.connect(backup)
-
-    # restore = f'{db_backup_path}{db_backup_file_name}_{check_number}.db'
-    db_restore = sqlite3.connect(destination)
-
-    # first make a backup of the current state
-    with db_orig:
-        db_orig.backup(db_backup, pages=1)
-    # Delete the db file
-    os.remove(db_file)
-
-    # Copy the restore DB to the original file name
-    db_orig = sqlite3.connect(db_file)
-    print('Restoring database to previous state.\n')
-    with db_restore:
-        db_restore.backup(db_orig, pages=1)
-
-    db_backup.close()
-    db_orig.close()
-    db_restore.close()
-
-
-def insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                  db_file, destination, db_backup_path, db_backup_file_name):
-    try:
-        for c in p.new_cases_list:
-            print(f'Populating case balances for {c}')
-            prisoner.court_cases.append(CourtCase(prisoner_doc_num=p.doc_num, case_num=c))
-
-            formatted_case_number = cte.format_case_num(prisoner.court_cases[-1].case_num)
-            ccam_balance = ccam.get_ccam_account_information(formatted_case_number, session, base_url)
-            prisoner.court_cases[-1].acct_cd = ccam_balance['data'][0]['acct_cd']
-            prisoner.court_cases[-1].case_comment = 'ACTIVE'
-            ccam.sum_account_balances(ccam_balance, p)
-            # populate balances for cases in person object
-            prisoner.court_cases[-1].case_balance.append(
-                CaseBalance(court_case_id=prisoner.court_cases[-1].id,
-                            amount_assessed=p.ccam_balance["Total Owed"],
-                            amount_collected=p.ccam_balance["Total Collected"],
-                            amount_owed=p.ccam_balance["Total Outstanding"]))
-            # db_session.add(prisoner.court_cases[-1])
-            db_session.commit()
-        p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)).all()
-        return p, prisoner
-    except TypeError:
-        prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name)
-        exit(1)
 
 def main():
-    # read config file
-    config_path = Path('/Users/jwt/PycharmProjects/SCCM/SCCM')
-    config_file = config_path / 'config' / 'config.ini'
-    configuration = config.initialize_config(str(config_file))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", help="Enter mode [dev,test,prod] for execution")
+    args = parser.parse_args()
 
-    # Initialize session variables contained in config.ini
-    prod_vars = config.get_prod_vars(configuration, 'PROD')
-    network_base_dir = prod_vars['NETWORK_BASE_DIR']
-    prod_db_path = prod_vars['NETWORK_DB_BASE_DIR']
-    db_file_name = prod_vars['DATABASE_SQLite']
-    db_file = f'{prod_db_path}{db_file_name}'
-    db_session = DbSession.global_init(db_file)
-    ccam_username = prod_vars['CCAM_USERNAME']
-    base_url = prod_vars['CCAM_API']
-    ccam_password = keyring.get_password("WIWCCA", ccam_username)
-    session = requests.Session()
-    session.auth = (ccam_username, ccam_password)
-    cert_path = prod_vars['CLIENT_CERT_PATH']
-    session.verify = cert_path
+    if args.mode == 'dev':
+        config_file = Path.cwd() / 'config' / 'dev.env'
+        # config_file = 'SCCM/config/dev.env'
+        settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
-    # Initialize filter lists from database
-    suffix_list = dc.populate_suffix_list(db_session)
-    cases_filter_list = dc.populate_cases_filter_list(db_session)
-
+    db_session = DbSession.factory()
+    # ccam_settings = CCAMSettings(_env_file='SCCM/ccam.env', _env_file_encoding='utf-8')
+    filter_list = dc.populate_cases_filter_list()
     # Ask user to choose one or more files for processing
     filenames = gf.choose_files_for_import()
 
@@ -135,154 +48,199 @@ def main():
         check_date = datetime.today().strftime('%m/%d/%Y')
         check_amount = sheet['K2'].value
         check_number = sheet['L2'].value
-        state_check_data = convert_sheet_to_dataframe(sheet)
+        state_check_data = cte.convert_sheet_to_dataframe(sheet)
 
         state_check_data = dc.aggregate_prisoner_payment_amounts(state_check_data)
 
-        cents = Decimal('0.01')
-        total_by_name_sum = state_check_data['Amount'].sum()
-        total_by_name_sum = Decimal(total_by_name_sum).quantize(cents, ROUND_HALF_UP)
-        check_amount = Decimal(check_amount).quantize(cents, ROUND_HALF_UP)
+        cents, total_by_name_sum = get_check_sum(state_check_data)
 
-        try:
-            assert total_by_name_sum == check_amount
-            print(
-                f'Check amount of {check_amount:,.2f} matches the sum of the converted file - {total_by_name_sum:,.2f}')
-        except AssertionError:
-            print(
-                f"ERROR: The sum of the file header:{check_amount:,.2f} does not match the sum:{total_by_name_sum:,.2f}"
-                f" of the converted file.")
+        # check that dataframe aggregation matches original Excel sum
+        check_amount = Decimal(check_amount).quantize(cents, ROUND_HALF_UP)
+        # TODO Add function for handling aliases.  Examples:
+        # Sovereignty Joseph Helmueller Sovereign is Andrew Helmueller
+        # Brandon D. Bradley, Sr. aka Brittney Bradley
+
+        check_sum(check_amount, total_by_name_sum)
+
+        # format constants for Excel output
+        deposit_num = prepare_deposit_number(check_date)
+
+        # create Microsoft Excel upload file
+        output_path = cte.create_output_path(file)
+        excel_file = cte.create_output_file(check_date, check_number, output_path)
 
         # set dataframe index to payee DOC#
         state_check_data = state_check_data.set_index('DOC')
 
-        # convert Panda object to dictionary
+        # convert Pandas dataframe to dictionary
         prisoner_dict = state_check_data.to_dict('index')
 
         # make backup of SQLite DB
-        db_backup_path = prod_vars['NETWORK_DB_BACKUP_DIR']
-        db_backup_file_name = prod_vars['DATABASE_BACKUP_FILE_NAME']
-        destination = f'{db_backup_path}db/backup/{db_backup_file_name}_{check_number}.db'
-        # shutil.copyfile(db_file, destination)
-        prod_db_backup(db_file, destination)
+        original = f'{settings.db_base_directory}{settings.db_file}'
+        destination = f'{settings.db_backup_directory}/{settings.db_file}_{check_number}'
+        # Only make backup of DB the first time
+        if not os.path.exists(destination):
+            prod_db_backup(original, destination)
 
         # Instantiate prisoner objects
-        prisoner_list = dict()
+        prisoner_list = []
         for i, (key, value) in enumerate(prisoner_dict.items()):
-            doc_num = key
-            name = value['Name']
-            amount = Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
-            prisoner_list[i] = prisoners.Prisoners(name, doc_num, amount)
+            items = {
+                "doc_num": key,
+                "legal_name": value['Name'],
+                "amount_paid": Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
+            }
+            prisoner_list.append(pSchema.PrisonerCreate(**items))
 
-        # format constants for Excel output
-        check_date_split = str.split(check_date, '/')
-        deposit_num = f"PL{check_date_split[0]}{check_date_split[1]}{check_date_split[2][2:]}"
-
-        # create Microsoft Excel file
-        output_path = cte.create_output_path(file)
-        excel_file = cte.create_output_file(check_date, check_number, output_path)
-
-        # Update data elements for payees and retrieve balances from internal DB if exists or CCAM API if not
-        for key, p in prisoner_list.items():
-            # lookup name in internal DB
+        # Update models elements for payees and retrieve balances from internal DB if exists or CCAM API if not
+        db_prisoner_list = []  # list to hold existing prisoners
+        for i, p in enumerate(prisoner_list):
             try:
-                prisoner = db_session.query(Prisoner).get(int(p.doc_num))
-                if prisoner:
-                    db_session.add(prisoner)
-                    # db_session.add(p)
+                amount_paid = p.amount_paid
+                # retrieve prisoner from internal DB
+                prisonerOrm = crud.get_prisoner_with_active_case(DbSession.factory(), p.doc_num, p.legal_name)
 
-                if prisoner is None:
-                    print(f'{p.check_name} not found in database. Creating.... ')
-                    # Get parameters, create new user, insert into DB and load balances
-                    # search for name on network share
-                    p.drop_suffix_from_name(suffix_list)
-                    p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
-                    p.plra_name = p.get_name_ratio()
-                    p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
+                # initialization path for prisoner that exists in the database
+                if prisonerOrm:
+                    try:
+                        p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
+                        # check if new cases added on the network for existing prisoner
+                        p = cs.get_prisoner_case_numbers(p, filter_list)
+                        if len(p.cases_list) > len(prisonerOrm.cases_list):
+                            session = DbSession.factory()
+                            session.add(prisonerOrm)
+                            s = set(x.ecf_case_num for x in prisonerOrm.cases_list)
+                            new_cases = [x for x in p.cases_list if x.ecf_case_num not in s]
+                            cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in new_cases}
+                            ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
+                            ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve,
+                                                                              settings=settings,
+                                                                              name=p.legal_name)
+                            if ccam_balances:
 
-                    # get the existing cases
-                    print(f'Getting existing cases for {p.plra_name}')
-                    p.cases_list = p.get_prisoner_case_numbers(cases_filter_list)
+                                ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
 
-                    # insert the prisoner into the database
-                    # p.create_prisoner(db_session, session, base_url)
-                    doc_num = input(f'Enter DOC Number for {p.plra_name}: ')
-                    prisoner = Prisoner(doc_num=int(doc_num), legal_name=p.plra_name)
-                    db_session.add(prisoner)
-                    p.new_cases_list = p.cases_list
-                    p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                                                db_file, destination, db_backup_path, db_backup_file_name)
+                                for case in new_cases:
+                                    case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
+                                    prisonerOrm.cases_list.append(CourtCase(acct_cd=case.acct_cd,
+                                                                            amount_assessed=case.balance.amount_assessed,
+                                                                            amount_collected=case.balance.amount_collected,
+                                                                            amount_owed=case.balance.amount_owed,
+                                                                            case_comment=case.case_comment,
+                                                                            ccam_case_num=case.ccam_case_num,
+                                                                            ecf_case_num=case.ecf_case_num))
+
+                                session.commit()
+                                # save to list for future lookup
+                        db_prisoner_list.append(prisonerOrm)
+
+                    except Exception as e:
+                        print(f'Error updating prisoner {p.legal_name} in database: {e}')
+                        continue
+
+                    # # convert to pydantic model for further processing
+                    p = pSchema.PrisonerModel.from_orm(prisonerOrm)
+                    p.amount_paid = amount_paid
+
+                    for case in p.cases_list:
+                        if case.case_comment == 'ACTIVE':
+                            case.balance = Balance()
+                            case.balance.amount_assessed = Decimal(case.amount_assessed.quantize(cents, ROUND_HALF_UP))
+                            case.balance.amount_collected = Decimal(
+                                case.amount_collected.quantize(cents, ROUND_HALF_UP))
+                            case.balance.amount_owed = Decimal(case.amount_owed.quantize(cents, ROUND_HALF_UP))
+                        prisoner_found = True
+                    # swap with prisoner created in earlier step.  Only necessary for existing prisoners
+                    prisoner_list[i] = p
+                    prisoner_found = True
 
                 else:
-                    # get active cases for payee
+                    prisoner_found = False
 
-                    query = db_session.query(CaseFilter.filter_text).subquery()
-                    p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
-                        .filter(CourtCase.case_comment.notin_(query)).all()
-                    if not p.cases_list:
-                        p.drop_suffix_from_name(suffix_list)
-                        p.search_dir = p.construct_search_directory_for_prisoner(network_base_dir)
-                        p.plra_name = p.get_name_ratio()
-                        p.case_search_dir = f"{p.search_dir}/{p.plra_name}"
-
-                        # get the cases from network share
-                        p.new_cases_list = p.get_prisoner_case_numbers(cases_filter_list)
-                        if not p.new_cases_list:
-                            p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
-                            p.ccam_balance = {'Total Owed': 0.00, 'Total Collected': 0.00, 'Total Outstanding': 0.00}
-                            p = ccam.check_for_overpayment(p)
-                            continue
-
-                        # for each case, get a case balance from CCAM
-
-                        p, prisoner = insert_new_case_with_balances(base_url, db_session, p, prisoner, session,
-                                                                    db_file, destination, db_backup_path, db_backup_file_name)
-
-                        # reload case list
-                        p.cases_list = db_session.query(CourtCase).filter(CourtCase.prisoner_doc_num == int(p.doc_num)) \
-                            .filter(CourtCase.case_comment.notin_(query)).all()
-                        # db_session.add(p)
-                        # Update case account code or prisoner vendor code if needed
-                        # FIXME -Ths code currently does not update the prty codes
-
-                p.current_case = p.cases_list.pop()
-                p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
-                # if not p.current_case.acct_cd:
-                #     p.formatted_case_num = cte.format_case_num(p.current_case.case_num)
-                #     codes = ccam.get_ccam_account_information(p.formatted_case_num, session, base_url)
-                #     if codes['data']:
-                #         p.current_case.acct_cd = codes['data'][0]['acct_cd']
-                #         # p.pty_cd = codes['data'][0]['prty_cd']
-                #         # p.update_pty_acct_cd(result, s)
-                #     else:
-                #         pass
-
-                # Check for an overpayment
-                p = ccam.check_for_overpayment(p)
-                p.create_transaction(check_number, db_session)
-                p.update_account_balance()
-                # db_session.add()
-                db_session.commit()
-                if p.overpayment.exists:
-                    print(f" The DOC # for {p.check_name} is {p.doc_num}."
-                          f" An overpayment was made in the amount of $ {Decimal(p.overpayment.amount_overpaid).quantize(cents, ROUND_HALF_UP)}\n")
-                else:
-                    print(f" The DOC # for {p.check_name} is {p.doc_num}."
-                          f" The amount paid is ${p.amount}\n")
-                # TODO: add logic to check for next active open case
-            except IndexError:
-                p.formatted_case_num = f'No Active Case Found for for payee {p.check_name}'
-                p.ccam_balance = {'Total Owed': 0.00, 'Total Collected': 0.00, 'Total Outstanding': 0.00}
-                overpayment_exists = ccam.check_for_overpayment(p)
-                p.overpayment = overpayment_exists
+            except Exception as e:
+                print(f'Error processing prisoner {p.legal_name} in database: {e}')
                 continue
-            except FileNotFoundError:
-                prod_db_restore(db_file, destination, db_backup_path,db_backup_file_name)
-                exit(1)
 
-    # Save excel file for upload to JIFMS
+            # initialization path for prisoner that does not exist in the database
+            if not prisoner_found:
+                p = ps.add_prisoner_to_db_session(settings.network_base_directory, p)
+                p = cs.get_prisoner_case_numbers(p, filter_list)
+                cases_to_skip = []
+                cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in p.cases_list}
 
-    cte.write_rows_to_output_file(excel_file, prisoner_list, deposit_num, check_date)
+                ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
+                if ccam_cases_to_retrieve:
+                    ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=settings,
+                                                                  name=p.legal_name)
+                    ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+                for case in p.cases_list:
+                    try:
+                        case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
+
+                    except KeyError:
+                        cases_to_skip.append(case)
+                        pass
+
+                if len(cases_to_skip) > 0:
+                    for case in cases_to_skip:
+                        if case in p.cases_list:
+                            p.cases_list.remove(case)
+                if party_code:
+                    p.vendor_code = party_code
+
+            # Process Payments and identify overpayments
+            number_of_cases_for_prisoner = len(p.cases_list)
+            if number_of_cases_for_prisoner == 0:
+                context = payment.Context(payment.OverPaymentProcess())
+                p = context.process_payment(p, int(check_number))
+
+            elif number_of_cases_for_prisoner > 1:
+                context = payment.Context(payment.MultipleCasePaymentProcess())
+                p = context.process_payment(p, int(check_number))
+
+            else:
+                context = payment.Context(payment.SingleCasePaymentProcess())
+                p = context.process_payment(p, int(check_number))
+
+    # Process new transactions for Excel output
+    payment_records = prepare_ccam_upload_transactions(prisoner_list)
+
+    # Create CCAM upload file in Excel format
+    cte.write_rows_to_output_file(excel_file, payment_records, deposit_num, check_date)
+
+    # add prisoners to database
+    print('Adding prisoners to database. Check Excel File for errors.')
+    # input('Press Enter to continue...')
+    # TODO Adjust session to be a single session for all prisoners
+    with DbSession.factory() as session:
+        session.begin()
+        try:
+            for p in prisoner_list:
+                if p.exists:
+                    # from SCCM.models.prisoners import Prisoner
+                    # result = session.query(Prisoner).filter(Prisoner.doc_num == p.doc_num).first()
+                    # session.add(result)
+
+                    new_transactions = [case for case in p.cases_list if case.transaction]
+                    for t in new_transactions:
+                        case_db = update_case_balances(t, db_prisoner_list)
+                        session.add(case_db)
+                        case_db.case_transactions.append(case_transaction.CaseTransaction(
+                            check_number=case.transaction.check_number,
+                            amount_paid=case.transaction.amount_paid
+                        ))
+
+
+                else:
+                    db_prisoner = create_prisoner(p)
+                    session.add(db_prisoner)
+                    db_prisoner = add_cases_for_prisoner(db_prisoner, p)
+                    # session.add(db_prisoner)
+        except:
+            session.rollback()
+            raise
+        else:
+            session.commit()
 
 
 if __name__ == '__main__':

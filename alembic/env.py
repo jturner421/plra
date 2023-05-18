@@ -1,14 +1,15 @@
 from logging.config import fileConfig
 
-
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
-import sys
-sys.path = ['', '..'] + sys.path[1:]
 
-from SCCM.data.modelbase import SqlAlchemyBase
+from SCCM.models.modelbase import SqlAlchemyBase
+from SCCM.config.config_model import PLRASettings
+import SCCM.models.__all_models
+
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -68,7 +69,7 @@ def run_migrations_online():
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, render_as_batch=True
         )
 
         with context.begin_transaction():

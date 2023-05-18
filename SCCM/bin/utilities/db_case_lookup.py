@@ -5,15 +5,13 @@ Command line database case lookup. Retrieves case information and prints to scre
 from pathlib import Path
 import warnings
 from sqlalchemy.exc import SAWarning
-import sqlalchemy as sa
 from decimal import *
 
 from SCCM.config import config
-from SCCM.data.court_cases import CourtCase
-from SCCM.data.case_balance import CaseBalance
-from SCCM.data.db_session import DbSession
+from SCCM.models.court_cases import CourtCase
+from SCCM.services.db_session import DbSession
 
-
+# TODO - rewrite
 def main():
     p = Path.cwd()
     config_file = p.parent.parent / 'config' / 'config.ini'
@@ -27,15 +25,15 @@ def main():
     # Suppress SQLAlchemy warning about Decimal storage.
     warnings.filterwarnings('ignore', r".*support Decimal objects natively", SAWarning, r'^sqlalchemy\.sql\.sqltypes$')
 
-    case_number = input('Enter Case Number (yy-cv-number-xxx(if multi-defendant case):  ')
+    case_number = input('Enter CaseBase Number (yy-cv-number-xxx(if multi-defendant case):  ')
 
     s = db_session
-    case_balance = s.query(CourtCase, CaseBalance).filter(CourtCase.case_num == case_number.upper()) \
+    case_balance = s.query(CourtCase, CaseBalance).filter(CourtCase.ecf_case_num == case_number.upper()) \
         .filter(CourtCase.id == CaseBalance.court_case_id).first()
 
     cents = Decimal('0.01')
 
-    print(f'The balance for case number {case_balance.CourtCase.case_num} '
+    print(f'The balance for case number {case_balance.CourtCase.ecf_case_num} '
           f'for {case_balance.CourtCase.prisoner.judgment_name} is: \n \n'
           f'Amount Assessed: {Decimal(case_balance.CaseBalance.amount_assessed).quantize(cents, ROUND_HALF_UP)}\n'
           f'Amount Collected: {Decimal(case_balance.CaseBalance.amount_collected).quantize(cents, ROUND_HALF_UP)}\n'

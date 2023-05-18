@@ -152,6 +152,7 @@ def main():
                         prisoner_found = True
                     # swap with prisoner created in earlier step.  Only necessary for existing prisoners
                     prisoner_list[i] = p
+                    prisoner_found = True
 
                 else:
                     prisoner_found = False
@@ -168,9 +169,10 @@ def main():
                 cases_dict = {case.ecf_case_num: cte.format_case_num(case) for case in p.cases_list}
 
                 ccam_cases_to_retrieve = [value for (key, value) in cases_dict.items()]
-                ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=settings,
+                if ccam_cases_to_retrieve:
+                    ccam_balances = ccam.get_ccam_account_information(ccam_cases_to_retrieve, settings=settings,
                                                                   name=p.legal_name)
-                ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+                    ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
                 for case in p.cases_list:
                     try:
                         case = initialize_balances(case, cases_dict, ccam_summary_balance, cents)
@@ -227,6 +229,8 @@ def main():
                             check_number=case.transaction.check_number,
                             amount_paid=case.transaction.amount_paid
                         ))
+
+
                 else:
                     db_prisoner = create_prisoner(p)
                     session.add(db_prisoner)

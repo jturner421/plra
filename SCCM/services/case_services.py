@@ -15,7 +15,7 @@ def get_prisoner_case_numbers(p, filter_list):
 
     :return: oldest active case
     """
-    print(f'Getting existing cases for {p.legal_name}')
+    print(f'Getting existing cases for {p.legal_name} from network share')
 
     cases = [f.name for f in os.scandir(p.case_search_dir) if f.is_dir()]
     active_cases = cases[:]

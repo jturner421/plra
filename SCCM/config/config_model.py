@@ -18,6 +18,7 @@ class PLRASettings(BaseSettings):
     ccam_username: str = Field(..., env='CCAM_USERNAME')
     ccam_password: SecretStr = Field(..., env='CCAM_PASSWORD')
     base_url: str = Field(..., env='BASE_URL')
+    ccam_url: str = Field(..., env='CCAM_URL')
     cert_file: str = Field(..., env='CERT_FILE')
     class Config:
         # env_file = env_file

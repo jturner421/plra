@@ -4,6 +4,7 @@ import requests
 from requests import Session
 from http.client import HTTPConnection
 import json
+from pathlib import Path
 
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
@@ -12,15 +13,15 @@ from SCCM.models.court_cases import CourtCase
 from SCCM.bin.retry import retry
 
 log = logging.getLogger('urllib3')
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARN)
 
 # logging from urllib3 to console
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.WARN)
 log.addHandler(ch)
 
 # print statements from `http.client.HTTPConnection` to console/stdout
-HTTPConnection.debuglevel = 1
+# HTTPConnection.debuglevel = 1
 
 
 class CCAMSettings(BaseSettings):
@@ -35,7 +36,7 @@ class CCAMSettings(BaseSettings):
 
     class Config:
         case_sensitive = False
-        env_file = '../ccam.env'
+        env_file = Path.cwd() / 'config' / 'dev.env'
         env_file_encoding = 'utf-8'
 
 
@@ -72,7 +73,7 @@ def get_ccam_account_information(cases, **kwargs):
     """
     if kwargs['settings']:
         settings = kwargs['settings']
-    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url,
+    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.ccam_url,
                      settings.cert_file) as session:
         print(f'Getting case balances from CCAM for {kwargs["name"]}\n')
         data = {"caseNumberList": cases}
@@ -81,11 +82,11 @@ def get_ccam_account_information(cases, **kwargs):
         }
 
         response = session.get(
-            settings.base_url,
+            settings.ccam_url,
             headers=headers,
             params=data).json()
 
-        ccam_data = response["models"]
+        ccam_data = response["data"]
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
@@ -95,7 +96,7 @@ def get_ccam_account_information(cases, **kwargs):
                 settings.base_url,
                 headers=headers,
                 params=data).json()
-            ccam_data.extend(response["models"])
+            ccam_data.extend(response["data"])
 
     return ccam_data
 

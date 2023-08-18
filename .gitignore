@@ -98,3 +98,11 @@ fabric.properties
 
 # Environment files
 *.env
+/.direnv/
+/.env
+/.envrc
+/US_Courts_root.crt
+/US_Courts_root.pem
+/uscourts.pem
+/wiw_plra.db
+/US_Courts_CA_Chain/

@@ -89,6 +89,7 @@ class MultipleCasePaymentProcess(Strategy):
 
         while not all_payments_applied and number_of_cases_for_prisoner > 0:
             for case in p.cases_list:
+                print(f'Applying payment of {p.amount_paid} to case {case.ecf_case_num}')
                 case.balance.amount_collected = Decimal(case.balance.amount_collected).quantize(cents, ROUND_HALF_UP) \
                                                 + p.amount_paid
                 case.balance.amount_owed = Decimal(case.balance.amount_assessed).quantize(cents, ROUND_HALF_UP) \

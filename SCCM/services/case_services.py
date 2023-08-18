@@ -6,16 +6,16 @@ import SCCM.services.dataframe_cleanup as dc
 import SCCM.schemas.case_schema as cs
 from SCCM.schemas.balance import Balance
 
-filter_list = dc.populate_cases_filter_list()
 
 
-def get_prisoner_case_numbers(p):
+
+def get_prisoner_case_numbers(p, filter_list):
     """
-    Identifies active cases for prisoner. Retrives from network share
+    Identifies active cases for prisoner. Retrieves from network share
 
     :return: oldest active case
     """
-    print(f'Getting existing cases for {p.legal_name}')
+    print(f'Getting existing cases for {p.legal_name} from network share')
 
     cases = [f.name for f in os.scandir(p.case_search_dir) if f.is_dir()]
     active_cases = cases[:]
@@ -30,7 +30,7 @@ def get_prisoner_case_numbers(p):
                 case_comment='ACTIVE')
             )
 
-        # special processing for cases for mutliple prisoner cases
+        # special processing for cases for multiple prisoner cases
         except pydantic.ValidationError:
             str_split = c.split('-')
             case_party_number = str_split[-1]

@@ -73,7 +73,7 @@ def get_ccam_account_information(cases, **kwargs):
     """
     if kwargs['settings']:
         settings = kwargs['settings']
-    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.base_url,
+    with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.ccam_url,
                      settings.cert_file) as session:
         print(f'Getting case balances from CCAM for {kwargs["name"]}\n')
         data = {"caseNumberList": cases}
@@ -82,7 +82,7 @@ def get_ccam_account_information(cases, **kwargs):
         }
 
         response = session.get(
-            settings.base_url,
+            settings.ccam_url,
             headers=headers,
             params=data).json()
 

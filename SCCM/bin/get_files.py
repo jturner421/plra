@@ -1,9 +1,13 @@
-from tkinter import Tk, filedialog
+from tkinter import *
+from tkinter import filedialog
+from tkinter import ttk, Tk
+
 
 
 def choose_files_for_import():
     """
     Opens operating system file folder to choose one or more input files for processing
+
     :return: list of one or more files
     """
     # disable root modal window

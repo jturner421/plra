@@ -164,7 +164,7 @@ The application will prompt the user to choose one or more PDF files to process 
 
 ### Performing a Reconciliation between JIFMS and the Application Database
 
-Two scripts: [reconcile_JIMS_to_db_for_all_prisoners.py](SCCM/bin/reconciliation/reconcile_JIMS_to_db_for_all_prisoners.py) and [update_db_balances_from_JIFMS_for_all_prisoners.py](SCCM/bin/reconciliation/update_db_balances_from_JIFMS_for_all_prisoners.py) are provided to reconcile balances between JIFMS and the application database. They can found in [SCCM/bin/reconciliation](SCCM/bin/reconciliation)
+Two scripts: [reconcile_JIMS_to_db_for_all_prisoners.py](SCCM/bin/reconciliation/reconcile_db_to_CCAM_for_all_prisoners.py) and [update_db_balances_from_JIFMS_for_all_prisoners.py](SCCM/bin/reconciliation/update_db_balances_from_JIFMS_for_all_prisoners.py) are provided to reconcile balances between JIFMS and the application database. They can found in [SCCM/bin/reconciliation](SCCM/bin/reconciliation)
 Typically, a reconciliation should be run prior to processing new state checks provided that all outstanding uploads to JIFMS have been completed and posted. If this is not the case, running a reconciliation will hinder the 
 ability of the application to identify and mark prisoner over payments and will likely result in false positives.
 

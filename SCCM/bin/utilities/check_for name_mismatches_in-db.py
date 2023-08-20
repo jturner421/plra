@@ -4,12 +4,9 @@ This utility checks for name mismatches between state check names and db names
 
 from pathlib import Path
 
-import keyring
-import requests
-import string
 from SCCM.config import config
-from SCCM.data.db_session import DbSession
-from SCCM.data.prisoners import Prisoner
+from SCCM.services.db_session import DbSession
+from SCCM.models.prisoners import Prisoner
 
 
 def main():

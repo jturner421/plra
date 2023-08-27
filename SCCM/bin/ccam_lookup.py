@@ -129,7 +129,7 @@ async def async_get_ccam_account_information(cases, **kwargs):
                                                             encoding='utf-8')) as session:
         timeout = aiohttp.ClientTimeout(total=5 * 60)
         data = {"caseNumberList": cases}
-        print(Fore.YELLOW + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
+        print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
         async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
             response.raise_for_status()
             res = await response.read()

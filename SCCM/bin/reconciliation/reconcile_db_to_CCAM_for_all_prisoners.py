@@ -60,17 +60,22 @@ async def generate_data(tasks: list[asyncio.coroutines], data: asyncio.Queue):
         # await asyncio.sleep(random() + .5)
 
 
-async def process_data(data: asyncio.Queue):
+async def process_data(data: asyncio.Queue, i: int):
     while not data.empty():
         item = await data.get()
-        value = item[0]
-        t = await item[0][2]
+        case = item[0][0]
+        ccam_balances = await item[0][2]
+        ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+        case_db_balances, ccam_case_balances = create_balance_comparison(case, ccam_summary_balance)
+        reconcile_balances(case, case_db_balances, ccam_case_balances)
+
         # dt = datetime.now() - t
         # print(Fore.CYAN +
         #       f" +++ Processed value {value} after {dt.total_seconds():,.2f} sec.", flush=True)
         #
         # await asyncio.sleep(.5)
         # return t
+
 
 async def get_ccam_account_information(case, p, data: asyncio.Queue):
     ccam_balances = await ccam.async_get_ccam_account_information(case.ccam_case_num, settings=settings,
@@ -124,8 +129,9 @@ def main():
     data = asyncio.Queue(2)
     tasks = [(case, case.prisoner, get_ccam_account_information(case, case.prisoner, data)) for case in cases]
     task1 = loop.create_task(generate_data(tasks, data))
-    task2 = loop.create_task(process_data(data))
-    final_task = asyncio.gather(task1, task2)
+    task2 = [loop.create_task(process_data(data, i)) for i in range(2)]
+    # task2 = loop.create_task(process_data(data))
+    final_task = asyncio.gather(task1, *task2)
     loop.run_until_complete(final_task)
     #                  for case in cases:
     # # retrieve current balance from CCAM
@@ -136,6 +142,7 @@ def main():
     # reconcile_balances(case, case_db_balances, ccam_case_balances)
     #
     # dbsession.commit()
+
 
 if __name__ == '__main__':
     main()

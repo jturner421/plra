@@ -16,11 +16,12 @@ import sqlalchemy
 
 from SCCM.services.db_session import DbSession
 from SCCM.config.config_model import PLRASettings
-from services.database_services import prod_db_backup
+from SCCM.services.database_services import prod_db_backup
 from SCCM.models.prisoners import Prisoner
 from SCCM.schemas.balance import Balance
 from SCCM.models.court_cases import CourtCase
 from SCCM.bin import ccam_lookup as ccam
+from SCCM.util import timeit
 from SCCM.models.case_reconciliation import CaseReconciliation
 from SCCM.bin.ccam_lookup import CCAMSettings
 
@@ -46,11 +47,12 @@ def get_prisoners_from_db():
     """
     from sqlalchemy.orm import selectinload
     session = DbSession.factory()
-    prisoners = session.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
+    # prisoners = session.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
+    prisoners = session.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(6).all()
     session.close()
     return prisoners
 
-
+@timeit
 def main():
     # ToDo - make sure to change base url
     env_file = Path.cwd() / 'config' / 'dev.env'

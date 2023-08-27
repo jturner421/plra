@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
+from colorama import Fore
 
 from SCCM.models.court_cases import CourtCase
 from SCCM.bin.retry import retry
@@ -75,7 +76,7 @@ def get_ccam_account_information(cases, **kwargs):
         settings = kwargs['settings']
     with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.ccam_url,
                      settings.cert_file) as session:
-        print(f'Getting case balances from CCAM for {kwargs["name"]}')
+        print(Fore.YELLOW + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
         data = {"caseNumberList": cases}
         headers = {
             'Content-Type': 'application/json'

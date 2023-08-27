@@ -9,8 +9,8 @@ from decimal import Decimal
 import datetime
 from datetime import datetime
 from pathlib import Path
+from colorama import Fore
 
-import colorama
 
 from SCCM.services.db_session import DbSession
 from SCCM.config.config_model import PLRASettings
@@ -18,6 +18,7 @@ from SCCM.services.database_services import prod_db_backup
 from SCCM.models.prisoners import Prisoner
 from SCCM.schemas.balance import Balance
 from SCCM.bin import ccam_lookup as ccam
+from SCCM.util import timeit
 from SCCM.models.case_reconciliation import CaseReconciliation
 
 cents = Decimal('0.01')
@@ -43,14 +44,14 @@ def get_prisoners_from_db():
     :return: list of prisoners
     """
     from sqlalchemy.orm import selectinload
-    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(5).all()
+    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(3).all()
     # prisoners = session.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
     return prisoners
 
 
 def get_ccam_account_information(case, p):
     ccam_balances = ccam.get_ccam_account_information(case.ccam_case_num, settings=settings,
-                                                      name=p.legal_name)
+                                                      name=p.legal_name, ecf_case_num=case.ecf_case_num)
     return ccam_balances
 
 
@@ -67,13 +68,13 @@ def create_balance_comparison(case, ccam_summary_balance):
 def reconcile_balances(case, case_db_balances, ccam_case_balances):
     try:
         assert ccam_case_balances == case_db_balances
-        print(f'Balances match for {case.prisoner.legal_name} - {case.ccam_case_num}\n')
+        print(Fore.BLUE + f'Balances match for {case.prisoner.legal_name} - {case.ecf_case_num}\n')
     except AssertionError:
-        print(f'Assertion Error for {case.prisoner.legal_name} - {case.ccam_case_num}')
+        print(Fore.RED + f'Balances do not match {case.prisoner.legal_name} - {case.ecf_case_num}')
         print(f'CCAM: {ccam_case_balances}')
-        print(f'DB: {case_db_balances}')
+        print(f'Database: {case_db_balances}')
         print('')
-        print(f'Updating DB for {case.prisoner.legal_name} - {case.ccam_case_num}')
+        print(f'Updating Database for {case.prisoner.legal_name} - {case.ecf_case_num}')
         case.amount_assessed = ccam_case_balances.amount_assessed
         case.amount_collected = ccam_case_balances.amount_collected
         case.amount_owed = ccam_case_balances.amount_owed
@@ -89,7 +90,7 @@ def reconcile_balances(case, case_db_balances, ccam_case_balances):
 
         dbsession.add_all([case, case_recon])
 
-
+@timeit
 def main():
     _backup_db()
 

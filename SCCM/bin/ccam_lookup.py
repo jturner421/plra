@@ -75,7 +75,7 @@ def get_ccam_account_information(cases, **kwargs):
         settings = kwargs['settings']
     with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.ccam_url,
                      settings.cert_file) as session:
-        print(f'Getting case balances from CCAM for {kwargs["name"]}\n')
+        print(f'Getting case balances from CCAM for {kwargs["name"]}')
         data = {"caseNumberList": cases}
         headers = {
             'Content-Type': 'application/json'
@@ -117,7 +117,7 @@ def sum_account_balances(payments):
     party_code = df.drop_duplicates('prty_cd')
 
     # get account sums grouped by case number
-    balances = df.groupby(df.case_num).sum()
+    balances = df.groupby(df.case_num).sum(['prnc_owed', 'prnc_clld', 'totl_ostg'])
     balances = balances.drop(['debt_typ_lnum'], axis=1)
     balances.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
 

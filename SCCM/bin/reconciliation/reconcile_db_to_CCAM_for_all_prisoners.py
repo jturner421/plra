@@ -9,8 +9,10 @@ from decimal import Decimal
 import datetime
 from datetime import datetime
 from pathlib import Path
-from colorama import Fore
+import asyncio
+from random import random
 
+from colorama import Fore
 
 from SCCM.services.db_session import DbSession
 from SCCM.config.config_model import PLRASettings
@@ -49,9 +51,18 @@ def get_prisoners_from_db():
     return prisoners
 
 
-def get_ccam_account_information(case, p):
-    ccam_balances = ccam.get_ccam_account_information(case.ccam_case_num, settings=settings,
-                                                      name=p.legal_name, ecf_case_num=case.ecf_case_num)
+async def generate_data(tasks: list[asyncio.coroutines], data: asyncio.Queue):
+    for t in tasks:
+        # Use the asyncio Queue
+        work = (t, datetime.datetime.now())
+        await data.put(work)
+        print(Fore.YELLOW + f" -- generated item {t[0]}", flush=True)
+        await asyncio.sleep(random() + .5)
+
+
+async def get_ccam_account_information(case, p, data: asyncio.Queue):
+    ccam_balances = await ccam.async_get_ccam_account_information(case.ccam_case_num, settings=settings,
+                                                                  name=p.legal_name, ecf_case_num=case.ecf_case_num)
     return ccam_balances
 
 
@@ -90,22 +101,27 @@ def reconcile_balances(case, case_db_balances, ccam_case_balances):
 
         dbsession.add_all([case, case_recon])
 
+
 @timeit
-def main():
+async def main():
+    loop = asyncio.get_event_loop()
     _backup_db()
 
     prisoners = get_prisoners_from_db()
     cases = [case for p in prisoners for case in p.cases_list]
-    for case in cases:
-        # retrieve current balance from CCAM
-        ccam_balances = get_ccam_account_information(case, case.prisoner)
-        ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
-        case_db_balances, ccam_case_balances = create_balance_comparison(case, ccam_summary_balance)
+    data = asyncio.Queue()
+    tasks = [(case, case.prisoner, get_ccam_account_information(case, case.prisoner, data)) for case in cases]
+    task1 = loop.create_task(generate_data(tasks, data))
+    loop.run_until_complete(task1)
+    #                  for case in cases:
+    # # retrieve current balance from CCAM
+    # ccam_balances = loop.run_until_complete(get_ccam_account_information(case, case.prisoner, data))
+    # ccam_summary_balance, party_code = ccam.sum_account_balances(ccam_balances)
+    # case_db_balances, ccam_case_balances = create_balance_comparison(case, ccam_summary_balance)
+    #
+    # reconcile_balances(case, case_db_balances, ccam_case_balances)
+    #
+    # dbsession.commit()
 
-        reconcile_balances(case, case_db_balances, ccam_case_balances)
-
-    dbsession.commit()
-
-
-if __name__ == '__main__':
-    main()
+    if __name__ == '__main__':
+        asyncio.run(main())

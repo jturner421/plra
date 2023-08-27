@@ -1,10 +1,14 @@
 import collections
 import logging
+import ssl
+from pathlib import Path
+import asyncio
+
 import requests
 from requests import Session
 from http.client import HTTPConnection
 import json
-from pathlib import Path
+import aiohttp
 
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
@@ -20,6 +24,7 @@ log.setLevel(logging.WARN)
 ch = logging.StreamHandler()
 ch.setLevel(logging.WARN)
 log.addHandler(ch)
+
 
 # print statements from `http.client.HTTPConnection` to console/stdout
 # HTTPConnection.debuglevel = 1
@@ -99,6 +104,45 @@ def get_ccam_account_information(cases, **kwargs):
                 params=data).json()
             ccam_data.extend(response["data"])
 
+    return ccam_data
+
+
+@retry(Exception, tries=4)
+async def async_get_ccam_account_information(cases, **kwargs):
+    """
+    Retrieves JIFMS CCAM information for case via API call
+
+    :param cases: case object
+
+    :return: dictionary of account balances for requested case
+    """
+
+    if kwargs['settings']:
+        settings = kwargs['settings']
+        headers = {'Content-Type': 'application/json'}
+        rest = '/ccam/v1/Accounts'
+        ssl_context = ssl.create_default_context(cafile=settings.cert_file)
+
+    async with aiohttp.ClientSession(base_url=settings.base_url,
+                                     auth=aiohttp.BasicAuth(settings.ccam_username,
+                                                            password=settings.ccam_password.get_secret_value(),
+                                                            encoding='utf-8')) as session:
+        timeout = aiohttp.ClientTimeout(total=5 * 60)
+        data = {"caseNumberList": cases}
+        print(Fore.YELLOW + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
+        async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
+            response.raise_for_status()
+            res = await response.read()
+            ccam_data = json.loads(res)['data']
+
+
+        # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
+        # url so we need to rely on total pages embedded in the metadata
+        for page in range(2, json.loads(res)['meta']['pageInfo']['totalPages'] + 1):
+            data = {"caseNumberList": cases, "page": page}
+            async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
+                response.raise_for_status()
+                ccam_data.extend(await response["data"])
     return ccam_data
 
 

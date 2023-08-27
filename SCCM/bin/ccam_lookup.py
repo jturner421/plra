@@ -108,13 +108,13 @@ def get_ccam_account_information(cases, **kwargs):
 
 
 @retry(Exception, tries=4)
-async def async_get_ccam_account_information(cases, **kwargs):
+async def async_get_ccam_account_information(ccam_case_num: str, **kwargs) -> list[dict]:
     """
     Retrieves JIFMS CCAM information for case via API call
 
-    :param cases: case object
+    :param ccam_case_num: ccam case number
 
-    :return: dictionary of account balances for requested case
+    :return: list of dictionaries of account balances for requested case
     """
 
     if kwargs['settings']:
@@ -128,7 +128,7 @@ async def async_get_ccam_account_information(cases, **kwargs):
                                                             password=settings.ccam_password.get_secret_value(),
                                                             encoding='utf-8')) as session:
         timeout = aiohttp.ClientTimeout(total=5 * 60)
-        data = {"caseNumberList": cases}
+        data = {"caseNumberList": ccam_case_num}
         print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
         async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
             response.raise_for_status()
@@ -139,14 +139,14 @@ async def async_get_ccam_account_information(cases, **kwargs):
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
         for page in range(2, json.loads(res)['meta']['pageInfo']['totalPages'] + 1):
-            data = {"caseNumberList": cases, "page": page}
+            data = {"caseNumberList": ccam_case_num, "page": page}
             async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
                 response.raise_for_status()
                 ccam_data.extend(await response["data"])
     return ccam_data
 
 
-def sum_account_balances(payments):
+def sum_account_balances(payments: list[dict]) -> tuple[pd.DataFrame, str]:
     """
     Totals CCAM payment lines and updates prison object with payment information as a Python List
 

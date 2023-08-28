@@ -130,10 +130,14 @@ async def async_get_ccam_account_information(ccam_case_num: str, **kwargs) -> li
         timeout = aiohttp.ClientTimeout(total=5 * 60)
         data = {"caseNumberList": ccam_case_num}
         print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
-        async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
-            response.raise_for_status()
-            res = await response.read()
-            ccam_data = json.loads(res)['data']
+        try:
+            async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
+                response.raise_for_status()
+                res = await response.read()
+                ccam_data = json.loads(res)['data']
+        except RuntimeWarning as e:
+            print('Reconciliation did not complete successfully')
+            print(e)
 
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page

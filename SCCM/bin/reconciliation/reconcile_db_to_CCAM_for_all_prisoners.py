@@ -47,7 +47,7 @@ def get_prisoners_from_db() -> list[Prisoner]:
     :return: list of prisoners
     """
     from sqlalchemy.orm import selectinload
-    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(15).all()
+    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(30).all()
     # prisoners = session.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
     return prisoners
 
@@ -151,11 +151,13 @@ async def main():
     _backup_db()
     prisoners = get_prisoners_from_db()
     cases = [case for p in prisoners for case in p.cases_list]
-    data = asyncio.Queue(4)
+    print(f'Number of cases to reconcile: {len(cases)}')
+    data = asyncio.Queue(5)
     tasks = [(case, case.prisoner, get_ccam_account_information(case, case.prisoner, data)) for case in cases]
     async with asyncio.TaskGroup() as tg:
         task1 = tg.create_task(generate_data(tasks, data))
-        task2 = [tg.create_task(process_data(data, i)) for i in range(2)]
+        task2 = [tg.create_task(process_data(data, i)) for i in range(3)]
+
     dbsession.commit()
     dbsession.close()
 

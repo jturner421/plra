@@ -13,7 +13,6 @@ import aiohttp
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
 from colorama import Fore
-from aiolimiter import AsyncLimiter
 
 from SCCM.models.court_cases import CourtCase
 from SCCM.bin.retry import retry
@@ -25,10 +24,6 @@ log.setLevel(logging.WARN)
 ch = logging.StreamHandler()
 ch.setLevel(logging.WARN)
 log.addHandler(ch)
-
-MAX_CONCURRENT = 3
-RATE_LIMIT_IN_SECOND = 5
-rate_limit = AsyncLimiter(RATE_LIMIT_IN_SECOND, 1.0)
 
 
 # print statements from `http.client.HTTPConnection` to console/stdout
@@ -112,8 +107,10 @@ def get_ccam_account_information(cases, **kwargs):
     return ccam_data
 
 
+
+
 @retry(Exception, tries=4)
-async def async_get_ccam_account_information(ccam_case_num: str, **kwargs) -> list[dict]:
+async def async_get_ccam_account_information(session, ccam_case_num: str, **kwargs) -> list[dict]:
     """
     Retrieves JIFMS CCAM information for case via API call
 
@@ -122,36 +119,37 @@ async def async_get_ccam_account_information(ccam_case_num: str, **kwargs) -> li
     :return: list of dictionaries of account balances for requested case
     """
 
-    if kwargs['settings']:
-        settings = kwargs['settings']
-        headers = {'Content-Type': 'application/json'}
-        rest = '/ccam/v1/Accounts'
-        ssl_context = ssl.create_default_context(cafile=settings.cert_file)
-    connector = aiohttp.TCPConnector(limit=MAX_CONCURRENT)
-    async with aiohttp.ClientSession(base_url=settings.base_url, connector=connector,
-                                     auth=aiohttp.BasicAuth(settings.ccam_username,
-                                                            password=settings.ccam_password.get_secret_value(),
-                                                            encoding='utf-8')) as session:
-        timeout = aiohttp.ClientTimeout(total=5 * 60)
-        data = {"caseNumberList": ccam_case_num}
-        print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
-
-        try:
-            async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
-                response.raise_for_status()
-                res = await response.read()
-                ccam_data = json.loads(res)['data']
-        except RuntimeWarning as e:
-            print('Reconciliation did not complete successfully')
-            print(e)
-
-        # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
-        # url so we need to rely on total pages embedded in the metadata
-        for page in range(2, json.loads(res)['meta']['pageInfo']['totalPages'] + 1):
-            data = {"caseNumberList": ccam_case_num, "page": page}
-            async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
-                response.raise_for_status()
-                ccam_data.extend(await response["data"])
+    # if kwargs['settings']:
+    #     settings = kwargs['settings']
+    #     headers = {'Content-Type': 'application/json'}
+    #     rest = '/ccam/v1/Accounts'
+    #     ssl_context = ssl.create_default_context(cafile=settings.cert_file)
+    # MAX_CONCURRENT = 10
+    # connector = aiohttp.TCPConnector(limit=MAX_CONCURRENT)
+    # async with aiohttp.ClientSession(base_url=settings.base_url, connector=connector,
+    #                                  auth=aiohttp.BasicAuth(settings.ccam_username,
+    #                                                         password=settings.ccam_password.get_secret_value(),
+    #                                                         encoding='utf-8')) as session:
+    # timeout = aiohttp.ClientTimeout(total=5 * 60)
+    data = {"caseNumberList": ccam_case_num}
+    print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
+    ccam_data = await session.get_CCAM_balances(data, ccam_case_num)
+    # try:
+    #         async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
+    #             response.raise_for_status()
+    #             res = await response.read()
+    #             ccam_data = json.loads(res)['data']
+    #     except RuntimeWarning as e:
+    #         print('Reconciliation did not complete successfully')
+    #         print(e)
+    #
+    #     # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
+    #     # url so we need to rely on total pages embedded in the metadata
+    #     for page in range(2, json.loads(res)['meta']['pageInfo']['totalPages'] + 1):
+    #         data = {"caseNumberList": ccam_case_num, "page": page}
+    #         async with session.get(rest, timeout=timeout, headers=headers, params=data, ssl=ssl_context) as response:
+    #             response.raise_for_status()
+    #             ccam_data.extend(await response["data"])
     return ccam_data
 
 

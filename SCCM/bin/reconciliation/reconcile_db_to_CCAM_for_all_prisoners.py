@@ -20,7 +20,7 @@ from SCCM.services.database_services import prod_db_backup
 from SCCM.models.prisoners import Prisoner
 from SCCM.schemas.balance import Balance
 from SCCM.bin import ccam_lookup as ccam
-from SCCM.util import async_timed
+from SCCM.util import async_timed, AsyncHttpClient
 from SCCM.models.case_reconciliation import CaseReconciliation
 
 # Globals
@@ -47,8 +47,8 @@ def get_prisoners_from_db() -> list[Prisoner]:
     :return: list of prisoners
     """
     from sqlalchemy.orm import selectinload
-    # prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(3).all()
-    prisoners = session.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
+    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(30).all()
+    # prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
     return prisoners
 
 
@@ -84,7 +84,7 @@ async def process_data(data: asyncio.Queue, i: int) -> None:
         reconcile_balances(case, case_db_balances, ccam_case_balances)
 
 
-async def get_ccam_account_information(case, p, data: asyncio.Queue) -> list[dict]:
+async def get_ccam_account_information(session, case, p, data: asyncio.Queue) -> list[dict]:
     """
     Retrieves CCAM balances for a case from JIFMS
 
@@ -93,7 +93,7 @@ async def get_ccam_account_information(case, p, data: asyncio.Queue) -> list[dic
     :param data: asyncio queue
     :return: list of Dictionaries of CCAM balances
     """
-    ccam_balances = await ccam.async_get_ccam_account_information(case.ccam_case_num, settings=settings,
+    ccam_balances = await ccam.async_get_ccam_account_information(session, case.ccam_case_num, settings=settings,
                                                                   name=p.legal_name, ecf_case_num=case.ecf_case_num)
     return ccam_balances
 
@@ -153,11 +153,13 @@ async def main():
     cases = [case for p in prisoners for case in p.cases_list]
     print(f'Number of cases to reconcile: {len(cases)}')
     data = asyncio.Queue(5)
-    tasks = [(case, case.prisoner, get_ccam_account_information(case, case.prisoner, data)) for case in cases]
+    session = AsyncHttpClient()
+    await session.start()
+    tasks = [(case, case.prisoner, get_ccam_account_information(session, case, case.prisoner, data)) for case in cases]
     async with asyncio.TaskGroup() as tg:
         task1 = tg.create_task(generate_data(tasks, data))
         task2 = [tg.create_task(process_data(data, i)) for i in range(3)]
-
+    await session.stop()
     dbsession.commit()
     dbsession.close()
 

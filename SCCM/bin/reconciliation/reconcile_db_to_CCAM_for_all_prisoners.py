@@ -20,7 +20,8 @@ from SCCM.services.database_services import prod_db_backup
 from SCCM.models.prisoners import Prisoner
 from SCCM.schemas.balance import Balance
 from SCCM.bin import ccam_lookup as ccam
-from SCCM.util import async_timed, AsyncHttpClient
+from SCCM.util import async_timed
+from services.api_services import AsyncHttpClient
 from SCCM.models.case_reconciliation import CaseReconciliation
 
 # Globals
@@ -47,7 +48,7 @@ def get_prisoners_from_db() -> list[Prisoner]:
     :return: list of prisoners
     """
     from sqlalchemy.orm import selectinload
-    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(30).all()
+    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(45).all()
     # prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
     return prisoners
 

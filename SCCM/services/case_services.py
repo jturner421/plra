@@ -2,11 +2,8 @@ import os
 from decimal import Decimal, ROUND_HALF_UP
 
 import pydantic.errors
-import SCCM.services.dataframe_cleanup as dc
 import SCCM.schemas.case_schema as cs
 from SCCM.schemas.balance import Balance
-
-
 
 
 def get_prisoner_case_numbers(p, filter_list):

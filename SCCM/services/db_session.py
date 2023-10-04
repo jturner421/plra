@@ -1,11 +1,8 @@
 import sqlalchemy
 import sqlalchemy.orm
 from SCCM.models.modelbase import SqlAlchemyBase
-from pathlib import Path
 # noinspection PyUnresolvedReferences
 import SCCM.models.__all_models
-from SCCM.config.config_model import PLRASettings
-
 
 class DbSession:
     """

@@ -19,7 +19,7 @@ def populate_suffix_list():
 
 def populate_cases_filter_list():
     """
-    Retrieves a list of of strings from default DB
+    Retrieves a list of strings from default DB
     :return: a list of strings used to filter against inactive case numbers
     """
     s = DbSession.factory()
@@ -34,9 +34,9 @@ def populate_cases_filter_list():
 
 def aggregate_prisoner_payment_amounts(dframe):
     """
-    Totals paid amounts per payee to apply to oldest active case
+    Totals paid amounts per payee to apply to the oldest active case
 
-    :param dframe: Dateframe from state check detail
+    :param dframe: Dataframe from state check detail
     :return: Dataframe with aggregate amounts
     """
     # Get clean list of names with associated DOC #

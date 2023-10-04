@@ -6,12 +6,12 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
 import SCCM.services.dataframe_cleanup as dc
-import SCCM.schemas.prisoner_schema as pSchema
+import SCCM.schemas.prisoner_schema as pris_schema
 
 suffix_list = dc.populate_suffix_list()
 
 
-def add_prisoner_to_db_session(network_base_dir: str, p: pSchema.PrisonerCreate):
+def add_prisoner_to_db_session(network_base_dir: str, p: pris_schema.PrisonerCreate):
     print(f'{p.legal_name} not found in database. Adding to session.... ')
     # Get parameters, create new user, insert into DB and load balances
     # search for name on network share
@@ -42,8 +42,9 @@ def construct_search_directory_for_prisoner(lookup_name: str, base_dir: str):
     """
     Creates path to base directory on network share to match payee to prisoner.
     Format is base_dir plus first initial of last name.
-
     Example : '/Volumes/DC/Groups/Finance/Trust Fund/CaseBase Files/J'
+
+    :param lookup_name: name of payee to match to prisoner
     :param base_dir: base directory location for electronic case files specified in config.ini
     :return: search directory for input to name matching algorithm
     """
@@ -65,7 +66,7 @@ def __name_token_sort_ratio(p, directory_name):
     token_sort_dict = Counter({})
     lookup_name = p.legal_name
     for name in directory_name:
-        directory_name = name[0]
+        # directory_name = name[0]
         token_sort_ratio = fuzz.token_sort_ratio(name, lookup_name)
         d = {name[0]: token_sort_ratio}
         token_sort_dict.update(d)
@@ -82,7 +83,7 @@ def get_name_ratio(p):
     directory = os.listdir(p.search_dir)
     ratio_names = process.extract(p.legal_name, directory)
     highest = process.extractOne(p.legal_name, directory)
-    # Handling edge cases and validate highest match
+    # Handling edge cases and validate the highest match
     # get token sort ratios for top three directory matches
     token_sort_ratios = __name_token_sort_ratio(p, ratio_names)
 

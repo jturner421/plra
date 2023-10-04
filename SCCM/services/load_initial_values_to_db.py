@@ -7,9 +7,6 @@ from SCCM.services.db_session import DbSession
 from SCCM.models.suffix import SuffixTable
 
 
-
-
-
 def main():
     session = DbSession.factory()
     suffix_list = ('jr', 'sr', 'ii', 'iii', 'iv', 'v')
@@ -21,8 +18,8 @@ def main():
         session.add(suffix)
 
     for f in filter_list:
-        filter = CaseFilter(filter_text=f)
-        session.add(filter)
+        case_filter = CaseFilter(filter_text=f)
+        session.add(case_filter)
 
     session.commit()
 

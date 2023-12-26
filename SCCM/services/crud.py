@@ -12,7 +12,7 @@ from SCCM.schemas.case_schema import CaseModel
 from SCCM.services.db_session import DbSession
 
 
-def create_prisoner(prisoner: prisoner_schema.PrisonerCreate):
+def create_prisoner(prisoner: prisoner_schema.PrisonerCreate) -> Prisoner:
     db_prisoner = prisoners.Prisoner(
         doc_num=prisoner.doc_num,
         judgment_name=prisoner.judgment_name,
@@ -22,10 +22,12 @@ def create_prisoner(prisoner: prisoner_schema.PrisonerCreate):
     return db_prisoner
 
 
-def get_prisoner_with_active_case(db: Session, doc_num: int, legal_name: str):
-    print(f'Retreiving {legal_name} from the database.\n')
+def get_prisoner_with_active_case(doc_num: int, legal_name: str) -> Prisoner:
+    print(f'Retrieving {legal_name} from the database.\n')
+    db = DbSession.factory()
     result = db.query(prisoners.Prisoner).filter(prisoners.Prisoner.doc_num == doc_num).first()
     if result:
+        result.paid_cases = [case for case in result.cases_list if case.case_comment == 'PAID']
         result.cases_list = [case for case in result.cases_list if case.case_comment == 'ACTIVE']
         db.close()
         return result
@@ -38,7 +40,6 @@ def add_cases_for_prisoner(db_prisoner: prisoners.Prisoner,
     """
     Adds processed cases to prisoner database model
 
-    :param db: SQLAlchemy session
     :param db_prisoner: SqlAlchemy Data Model
     :param p: Pydantic Schema
     :return: prisoner database object
@@ -63,10 +64,6 @@ def add_cases_for_prisoner(db_prisoner: prisoners.Prisoner,
         # TODO - check for zero balance and marked PAID
         db_prisoner.cases_list.append(new_case)
     return db_prisoner
-
-
-def _create_transaction(db: Session, db_prisoner: prisoners.Prisoner, p: prisoner_schema.PrisonerCreate):
-    pass
 
 
 def update_case_balances(case: CaseModel, db_prisoner_list: List[Prisoner]):

@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-def progress(status, remaining, total):
+def progress(remaining, total):
     print(f'Copied {total - remaining} of {total} pages...')
 
 

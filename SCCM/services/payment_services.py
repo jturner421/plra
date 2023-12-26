@@ -8,7 +8,7 @@ cents = Decimal('0.01')
 
 
 def prepare_ccam_upload_transactions(prisoner_list):
-    # Save excel file for upload to JIFMS
+    # Save Excel file for upload to JIFMS
     payments = []
     for p in prisoner_list:
         if p.overpayment:
@@ -18,8 +18,12 @@ def prepare_ccam_upload_transactions(prisoner_list):
             payments.append({'prisoner': p})
         else:
             for case in p.cases_list:
-                if case.transaction:
-                    payments.append({'prisoner': p, 'case': case})
+                try:
+                    if case.transaction:
+                        payments.append({'prisoner': p, 'case': case})
+                except AttributeError as e:
+                    print(f'ERROR: {e}')
+                    print(f'ERROR: {p.legal_name} - {case} has no transaction')
     return payments
 
 
@@ -100,7 +104,6 @@ def get_check_sum(state_check_data: DataFrame) -> Decimal:
     :param state_check_data: pandas dataframe of prisoners with amount paid
     :return: total of all prisoners
     """
-    cents = Decimal('0.01')
     total_by_name_sum = state_check_data['Amount'].sum()
     total_by_name_sum = Decimal(total_by_name_sum).quantize(cents, ROUND_HALF_UP)
     return cents, total_by_name_sum

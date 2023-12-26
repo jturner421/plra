@@ -1,16 +1,23 @@
 import collections
 import logging
+import ssl
+from pathlib import Path
+import asyncio
+
+# import backoff
 import requests
 from requests import Session
 from http.client import HTTPConnection
 import json
-from pathlib import Path
+import aiohttp
 
 import pandas as pd
 from pydantic import BaseSettings, Field, SecretStr
+from colorama import Fore
 
 from SCCM.models.court_cases import CourtCase
-from SCCM.bin.retry import retry
+
+# from SCCM.bin.retry import retry
 
 log = logging.getLogger('urllib3')
 log.setLevel(logging.WARN)
@@ -19,9 +26,6 @@ log.setLevel(logging.WARN)
 ch = logging.StreamHandler()
 ch.setLevel(logging.WARN)
 log.addHandler(ch)
-
-# print statements from `http.client.HTTPConnection` to console/stdout
-# HTTPConnection.debuglevel = 1
 
 
 class CCAMSettings(BaseSettings):
@@ -62,7 +66,7 @@ class CCAMSession:
         self.session.close()
 
 
-@retry(Exception, tries=4)
+
 def get_ccam_account_information(cases, **kwargs):
     """
     Retrieves JIFMS CCAM information for case via API call
@@ -75,7 +79,7 @@ def get_ccam_account_information(cases, **kwargs):
         settings = kwargs['settings']
     with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.ccam_url,
                      settings.cert_file) as session:
-        print(f'Getting case balances from CCAM for {kwargs["name"]}\n')
+        print(Fore.YELLOW + f'Getting case balances from CCAM for {kwargs["name"]}')
         data = {"caseNumberList": cases}
         headers = {
             'Content-Type': 'application/json'
@@ -90,18 +94,33 @@ def get_ccam_account_information(cases, **kwargs):
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
-        for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
-            data = {"caseNumberList": cases, "page": page}
-            response = session.get(
-                settings.base_url,
-                headers=headers,
-                params=data).json()
-            ccam_data.extend(response["data"])
+        if response['meta']['pageInfo']['totalPages'] > 1:
+            for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
+                data = {"caseNumberList": cases, "page": page}
+                response = session.get(
+                    settings.ccam_url,
+                    headers=headers,
+                    params=data).json()
+                ccam_data.extend(response["data"])
 
     return ccam_data
 
 
-def sum_account_balances(payments):
+async def async_get_ccam_account_information(session, ccam_case_num: str, **kwargs) -> list[dict]:
+    """
+    Retrieves JIFMS CCAM information for case via API call
+
+    :param ccam_case_num: ccam case number
+
+    :return: list of dictionaries of account balances for requested case
+    """
+    data = {"caseNumberList": ccam_case_num}
+    print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
+    ccam_data = await session.get_CCAM_balances_async(data, ccam_case_num)
+    return ccam_data
+
+
+def sum_account_balances(payments: list[dict]) -> tuple[pd.DataFrame, str]:
     """
     Totals CCAM payment lines and updates prison object with payment information as a Python List
 
@@ -117,7 +136,7 @@ def sum_account_balances(payments):
     party_code = df.drop_duplicates('prty_cd')
 
     # get account sums grouped by case number
-    balances = df.groupby(df.case_num).sum()
+    balances = df.groupby(df.case_num).sum(['prnc_owed', 'prnc_clld', 'totl_ostg'])
     balances = balances.drop(['debt_typ_lnum'], axis=1)
     balances.columns = ['Total Owed', 'Total Collected', 'Total Outstanding']
 

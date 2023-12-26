@@ -18,8 +18,12 @@ def prepare_ccam_upload_transactions(prisoner_list):
             payments.append({'prisoner': p})
         else:
             for case in p.cases_list:
-                if case.transaction:
-                    payments.append({'prisoner': p, 'case': case})
+                try:
+                    if case.transaction:
+                        payments.append({'prisoner': p, 'case': case})
+                except AttributeError as e:
+                    print(f'ERROR: {e}')
+                    print(f'ERROR: {p.legal_name} - {case} has no transaction')
     return payments
 
 

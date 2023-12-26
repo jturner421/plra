@@ -4,7 +4,7 @@ import ssl
 from pathlib import Path
 import asyncio
 
-import backoff
+# import backoff
 import requests
 from requests import Session
 from http.client import HTTPConnection
@@ -79,7 +79,7 @@ def get_ccam_account_information(cases, **kwargs):
         settings = kwargs['settings']
     with CCAMSession(settings.ccam_username, settings.ccam_password.get_secret_value(), settings.ccam_url,
                      settings.cert_file) as session:
-        print(Fore.YELLOW + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
+        print(Fore.YELLOW + f'Getting case balances from CCAM for {kwargs["name"]}')
         data = {"caseNumberList": cases}
         headers = {
             'Content-Type': 'application/json'
@@ -94,13 +94,14 @@ def get_ccam_account_information(cases, **kwargs):
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
-        for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
-            data = {"caseNumberList": cases, "page": page}
-            response = session.get(
-                settings.base_url,
-                headers=headers,
-                params=data).json()
-            ccam_data.extend(response["data"])
+        if response['meta']['pageInfo']['totalPages'] > 1:
+            for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
+                data = {"caseNumberList": cases, "page": page}
+                response = session.get(
+                    settings.ccam_url,
+                    headers=headers,
+                    params=data).json()
+                ccam_data.extend(response["data"])
 
     return ccam_data
 

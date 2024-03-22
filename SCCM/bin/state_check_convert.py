@@ -36,13 +36,13 @@ def main():
         # config_file = 'SCCM/config/dev.env'
         settings = PLRASettings(_env_file=config_file, _env_file_encoding='utf-8')
 
-    db_session = DbSession.factory()
+    # db_session = DbSession.factory()
     # ccam_settings = CCAMSettings(_env_file='SCCM/ccam.env', _env_file_encoding='utf-8')
     filter_list = dc.populate_cases_filter_list()
     # Ask user to choose one or more files for processing
     filenames = gf.choose_files_for_import()
 
-    for idx, file in enumerate(filenames):
+    for file in filenames:
         wb = cte.open_xls_file(file)
         sheet = wb['Sheet']
         check_date = datetime.today().strftime('%m/%d/%Y')
@@ -86,7 +86,7 @@ def main():
         prisoner_list = []
         for i, (key, value) in enumerate(prisoner_dict.items()):
             items = {
-                "doc_num": key,
+                "doc_number": key,
                 "legal_name": value['Name'],
                 "amount_paid": Decimal(value['Amount']).quantize(cents, ROUND_HALF_UP)
             }
@@ -98,7 +98,7 @@ def main():
             try:
                 amount_paid = p.amount_paid
                 # retrieve prisoner from internal DB
-                prisonerOrm = crud.get_prisoner_with_active_case(p.doc_num, p.legal_name)
+                prisonerOrm = crud.get_prisoner_with_active_case(p.doc_number, p.legal_name)
 
                 # initialization path for prisoner that exists in the database
                 if prisonerOrm:
@@ -233,9 +233,10 @@ def main():
                     for t in new_transactions:
                         case_db = update_case_balances(t, db_prisoner_list)
                         session.add(case_db)
+                        # Todo review error on check number
                         case_db.case_transactions.append(case_transaction.CaseTransaction(
-                            check_number=case.transaction.check_number,
-                            amount_paid=case.transaction.amount_paid
+                            check_number=t.transaction.check_number,
+                            amount_paid=t.transaction.amount_paid
                         ))
 
 

@@ -48,8 +48,8 @@ def get_prisoners_from_db() -> list[Prisoner]:
     :return: list of prisoners
     """
     from sqlalchemy.orm import selectinload
-    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(45).all()
-    # prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
+    # prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).limit(45).all()
+    prisoners = dbsession.query(Prisoner).options(selectinload(Prisoner.cases_list)).all()
     return prisoners
 
 

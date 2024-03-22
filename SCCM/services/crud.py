@@ -14,7 +14,7 @@ from SCCM.services.db_session import DbSession
 
 def create_prisoner(prisoner: prisoner_schema.PrisonerCreate) -> Prisoner:
     db_prisoner = prisoners.Prisoner(
-        doc_num=prisoner.doc_num,
+        doc_number=prisoner.doc_number,
         judgment_name=prisoner.judgment_name,
         legal_name=prisoner.legal_name,
         vendor_code=prisoner.vendor_code
@@ -22,10 +22,10 @@ def create_prisoner(prisoner: prisoner_schema.PrisonerCreate) -> Prisoner:
     return db_prisoner
 
 
-def get_prisoner_with_active_case(doc_num: int, legal_name: str) -> Prisoner:
+def get_prisoner_with_active_case(doc_number: int, legal_name: str) -> Prisoner:
     print(f'Retrieving {legal_name} from the database.\n')
     db = DbSession.factory()
-    result = db.query(prisoners.Prisoner).filter(prisoners.Prisoner.doc_num == doc_num).first()
+    result = db.query(prisoners.Prisoner).filter(prisoners.Prisoner.doc_number == doc_number).first()
     if result:
         result.paid_cases = [case for case in result.cases_list if case.case_comment == 'PAID']
         result.cases_list = [case for case in result.cases_list if case.case_comment == 'ACTIVE']

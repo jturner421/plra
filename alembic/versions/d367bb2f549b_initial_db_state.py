@@ -26,7 +26,7 @@ def upgrade():
     )
     op.create_table('prisoners',
     sa.Column('id', sa.INTEGER(), nullable=False),
-    sa.Column('doc_num', sa.Integer(), nullable=True),
+    sa.Column('doc_number', sa.Integer(), nullable=True),
     sa.Column('created_date', sa.DateTime(), nullable=True),
     sa.Column('updated_date', sa.DateTime(), nullable=True),
     sa.Column('judgment_name', sa.String(), nullable=True),
@@ -35,7 +35,7 @@ def upgrade():
     sa.PrimaryKeyConstraint('id', name=op.f('pk_prisoners'))
     )
     with op.batch_alter_table('prisoners', schema=None) as batch_op:
-        batch_op.create_index(batch_op.f('ix_prisoners_doc_num'), ['doc_num'], unique=True)
+        batch_op.create_index(batch_op.f('ix_prisoners_doc_number'), ['doc_number'], unique=True)
         batch_op.create_index(batch_op.f('ix_prisoners_id'), ['id'], unique=False)
         batch_op.create_index(batch_op.f('ix_prisoners_judgment_name'), ['judgment_name'], unique=False)
         batch_op.create_index(batch_op.f('ix_prisoners_legal_name'), ['legal_name'], unique=False)
@@ -49,15 +49,15 @@ def upgrade():
     )
     op.create_table('alias',
     sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
-    sa.Column('prisoner_doc_num', sa.Integer(), nullable=True),
+    sa.Column('prisoner_doc_number', sa.Integer(), nullable=True),
     sa.Column('created_date', sa.DateTime(), nullable=True),
     sa.Column('alias_name', sa.String(), nullable=True),
-    sa.ForeignKeyConstraint(['prisoner_doc_num'], ['prisoners.doc_num'], name=op.f('fk_alias_prisoner_doc_num_prisoners')),
+    sa.ForeignKeyConstraint(['prisoner_doc_number'], ['prisoners.doc_number'], name=op.f('fk_alias_prisoner_doc_number_prisoners')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_alias'))
     )
     op.create_table('court_cases',
     sa.Column('id', sa.INTEGER(), autoincrement=True, nullable=False),
-    sa.Column('prisoner_doc_num', sa.Integer(), nullable=True),
+    sa.Column('prisoner_doc_number', sa.Integer(), nullable=True),
     sa.Column('created_date', sa.DateTime(), nullable=True),
     sa.Column('acct_cd', sa.String(), nullable=True),
     sa.Column('ecf_case_num', sa.String(), nullable=True),
@@ -68,7 +68,7 @@ def upgrade():
     sa.Column('amount_assessed', sa.NUMERIC(), nullable=False),
     sa.Column('amount_collected', sa.NUMERIC(), nullable=False),
     sa.Column('amount_owed', sa.NUMERIC(), nullable=False),
-    sa.ForeignKeyConstraint(['prisoner_doc_num'], ['prisoners.doc_num'], name=op.f('fk_court_cases_prisoner_doc_num_prisoners')),
+    sa.ForeignKeyConstraint(['prisoner_doc_number'], ['prisoners.doc_number'], name=op.f('fk_court_cases_prisoner_doc_number_prisoners')),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_court_cases'))
     )
     op.create_table('case_reconciliation',
@@ -111,7 +111,7 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_prisoners_legal_name'))
         batch_op.drop_index(batch_op.f('ix_prisoners_judgment_name'))
         batch_op.drop_index(batch_op.f('ix_prisoners_id'))
-        batch_op.drop_index(batch_op.f('ix_prisoners_doc_num'))
+        batch_op.drop_index(batch_op.f('ix_prisoners_doc_number'))
 
     op.drop_table('prisoners')
     op.drop_table('case_filters')

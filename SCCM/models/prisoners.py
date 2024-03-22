@@ -14,7 +14,7 @@ class Prisoner(SqlAlchemyBase):
     __tablename__ = 'prisoners'
 
     id = sa.Column(sa.INT, primary_key=True, index=True)
-    doc_num = sa.Column(sa.Integer, unique=True, index=True)
+    doc_number = sa.Column(sa.Integer, unique=True, index=True)
     created_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
     updated_date = sa.Column(sa.DateTime, default=datetime.datetime.now)
     judgment_name = sa.Column(sa.String, index=True)
@@ -25,7 +25,7 @@ class Prisoner(SqlAlchemyBase):
     aliases = relationship('Alias', back_populates='prisoner_name')
 
     def __repr__(self):
-        return '<Doc Number {}>'.format(self.doc_num)
+        return f'Doc Number - {self.doc_number}'
 
 
 # class PrisonerFactory(factory.alchemy.SQLAlchemyModelFactory):

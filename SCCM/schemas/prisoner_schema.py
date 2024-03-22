@@ -5,7 +5,7 @@ from SCCM.schemas.case_schema import CaseModel
 
 
 class PrisonerBase(BaseModel):
-    doc_num: int
+    doc_number: int
     legal_name: str
     amount_paid: Decimal
     exists: bool = False
@@ -26,7 +26,7 @@ class PrisonerModel(BaseModel):
     id: int
     legal_name: str
     amount_paid: Decimal = None
-    doc_num: int
+    doc_number: int
     judgment_name: str
     vendor_code: str
     cases_list: Optional[List[CaseModel]] = []

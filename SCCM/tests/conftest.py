@@ -34,7 +34,7 @@ def setup_db():
 
 @pytest.fixture
 def setup_prisoner():
-    items = {"doc_num": 15483,
+    items = {"doc_number": 15483,
              "legal_name": 'Nate A Lindell',
              "amount_paid": Decimal(846.37).quantize(cents, ROUND_HALF_UP),
              "judgment_name": 'LINDELL, Nate',
@@ -68,7 +68,7 @@ def setup_prisoner():
 
 @pytest.fixture
 def setup_prisoner_refund():
-    items = {"doc_num": 15483,
+    items = {"doc_number": 15483,
              "legal_name": 'Walter W Blanck',
              "amount_paid": Decimal(528.87).quantize(cents, ROUND_HALF_UP),
              "judgment_name": 'BLANCK, Walter',

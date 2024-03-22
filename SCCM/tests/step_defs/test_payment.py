@@ -18,7 +18,7 @@ def test_single_payment():
 
 @given("I'm a prisoner with an active case", target_fixture='prisoner')
 def get_prisoner():
-    items = {"doc_num": 1234,
+    items = {"doc_number": 1234,
              "legal_name": 'Wayne Hart',
              "amount_paid": Decimal(172.87).quantize(cents, ROUND_HALF_UP)
              }
@@ -33,7 +33,7 @@ def get_prisoner():
 
 @given("I'm a prisoner with no active cases", target_fixture='prisoner_nocase')
 def get_prisoner_with_no_case():
-    items = {"doc_num": 1234,
+    items = {"doc_number": 1234,
              "legal_name": 'Wayne Hart',
              "amount_paid": Decimal(50.00).quantize(cents, ROUND_HALF_UP)
              }

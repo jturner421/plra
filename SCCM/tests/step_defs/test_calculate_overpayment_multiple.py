@@ -19,7 +19,7 @@ def test_overpayment():
 
 @given("I'm a prisoner with multiple cases", target_fixture='prisoner')
 def get_prisoner():
-    items = {"doc_num": 1234,
+    items = {"doc_number": 1234,
              "legal_name": 'Bob Smith',
              "amount_paid": Decimal(525.00).quantize(cents, ROUND_HALF_UP)
              }

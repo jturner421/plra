@@ -94,6 +94,7 @@ def get_ccam_account_information(cases, **kwargs):
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
+        #todo: catch too many requests error
         if response['meta']['pageInfo']['totalPages'] > 1:
             for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
                 data = {"caseNumberList": cases, "page": page}

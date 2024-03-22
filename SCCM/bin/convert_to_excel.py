@@ -149,21 +149,30 @@ def get_shortened_name(name):
             else:  # Drop middle initial if still over 20 characters
                 revised_split_name = [split_name[0], split_name[2]]
             shortened_name = " ".join(revised_split_name)
-        else:
+        else: 
             # check for hyphenation
-            try:
-                split_name = str.split(name, ' ')
-                # split the hyphenation
-                hyph_lastname = str.split(split_name[1], '-')
-                # shorten the left part of the hyphenated name
-                hyph_initial_lastname = hyph_lastname[0][0]
-                hyph_lastname = f"{hyph_initial_lastname}-{hyph_lastname[1]}"
-                revised_split_name = [split_name[0], hyph_lastname]
+            split_name = str.split(name, ' ')
+            shortened_name = _check_for_hyphenation(split_name)
+            if not shortened_name:
+                # Drop middle initial if still over 20 characters
+                revised_split_name = [split_name[0][0], split_name[1]]
                 shortened_name = " ".join(revised_split_name)
-            except AttributeError:
-                print(f"{name} cannot be shortened to comply with CCAM")
         name = shortened_name
     return name
+
+
+def _check_for_hyphenation(split_name):
+    # split the hyphenation
+    try:
+        hyph_lastname = str.split(split_name[1], '-')
+        # shorten the left part of the hyphenated name
+        hyph_initial_lastname = hyph_lastname[0][0]
+        hyph_lastname = f"{hyph_initial_lastname}-{hyph_lastname[1]}"
+        revised_split_name = [split_name[0], hyph_lastname]
+        shortened_name = " ".join(revised_split_name)
+        return shortened_name
+    except IndexError:
+        return False
 
 
 def write_rows_to_output_file(file, payee_list, deposit_num, effective_date):
@@ -194,7 +203,7 @@ def _transaction_row(deposit_num, effective_date, p, rownum, sheet):
     # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
     # checks for the same day
     sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
-    sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
+    sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_number)
     # Check length of name to fit within CCAM batch upload constraints
     try:
         if len(p['prisoner'].legal_name) <= 20:
@@ -233,7 +242,7 @@ def _overpayment_row(deposit_num, effective_date, p, rownum, sheet):
     # Control numbers need to be randomized to ensure that a number is not duplicated if a payee is on multiple
     # checks for the same day
     sheet.cell(row=rownum, column=1).value = random.randrange(0, 999, 1)
-    sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_num)
+    sheet.cell(row=rownum, column=2).value = int(p['prisoner'].doc_number)
     sheet.cell(row=rownum, column=3).value = p['prisoner'].legal_name
     sheet.cell(row=rownum, column=4).value = effective_date
     sheet.cell(row=rownum, column=5).value = Decimal(p['prisoner'].overpayment['transaction amount'])

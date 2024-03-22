@@ -20,7 +20,7 @@ def test_multiple_cases_for_payment():
 
 @given("I'm a prisoner with multiple unpaid active cases", target_fixture='prisoner')
 def get_prisoner_cases():
-    items = {"doc_num": 1234,
+    items = {"doc_number": 1234,
              "legal_name": 'Bob Smith',
              "amount_paid": Decimal(4.59).quantize(cents, ROUND_HALF_UP)
              }

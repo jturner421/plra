@@ -23,7 +23,7 @@ class DbSession:
         print(f'Connecting to {conn_str}')
 
         engine = sqlalchemy.create_engine(conn_str, connect_args={'check_same_thread': False},
-                                          echo=False)  # set echo=True for debugging
+                                          echo=True)  # set echo=True for debugging
         DbSession.engine = engine
         DbSession.factory = sqlalchemy.orm.sessionmaker(bind=engine)
 

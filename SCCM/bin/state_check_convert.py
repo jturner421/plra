@@ -5,6 +5,8 @@ import argparse
 import os
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 import SCCM.services.initiate_global_db_session
 from SCCM.models import case_transaction
 from SCCM.models.court_cases import CourtCase
@@ -220,36 +222,50 @@ def main():
     print('Adding prisoners to database. Check Excel File for errors.')
     # input('Press Enter to continue...')
     # TODO Adjust session to be a single session for all prisoners
-    with DbSession.factory() as session:
-        session.begin()
-        try:
-            for p in prisoner_list:
-                if p.exists:
-                    # from SCCM.models.prisoners import Prisoner
-                    # result = session.query(Prisoner).filter(Prisoner.doc_num == p.doc_num).first()
-                    # session.add(result)
+    with Session(DbSession.engine) as session:
+        with session.begin():
+            try:
+                for p in prisoner_list:
+                    if p.exists:
+                        # from SCCM.models.prisoners import Prisoner
+                        # result = session.query(Prisoner).filter(Prisoner.doc_num == p.doc_num).first()
+                        # session.add(result)
 
-                    new_transactions = [case for case in p.cases_list if case.transaction]
-                    for t in new_transactions:
-                        case_db = update_case_balances(t, db_prisoner_list)
-                        session.add(case_db)
-                        # Todo review error on check number
-                        case_db.case_transactions.append(case_transaction.CaseTransaction(
-                            check_number=t.transaction.check_number,
-                            amount_paid=t.transaction.amount_paid
-                        ))
+                        db_prisoner_list, session = add_transaction_for_prisoner_that_exists(db_prisoner_list, p,
+                                                                                             session)
+
+                    else:
+                        db_prisoner = create_prisoner(p)
+                        session.add(db_prisoner)
+                        db_prisoner = add_cases_for_prisoner(db_prisoner, p)
+                        session.add(db_prisoner)
+            except Exception as e:
+                print(f'Error adding prisoner to database: {e}')
+                session.rollback()
+                raise
+
+        # except:
+        #     session.rollback()
+        #     raise
+        # else:
+        #     session.commit()
 
 
-                else:
-                    db_prisoner = create_prisoner(p)
-                    session.add(db_prisoner)
-                    db_prisoner = add_cases_for_prisoner(db_prisoner, p)
-                    # session.add(db_prisoner)
-        except:
-            session.rollback()
-            raise
-        else:
-            session.commit()
+def add_transaction_for_prisoner_that_exists(db_prisoner_list, p, session):
+    new_transactions = [case for case in p.cases_list if case.transaction]
+    if new_transactions:
+        for t in new_transactions:
+            case_db = update_case_balances(t, db_prisoner_list)
+            session.add(case_db)
+            # Todo review error on check number
+            case_db.case_transactions.append(case_transaction.CaseTransaction(
+                check_number=t.transaction.check_number,
+                amount_paid=t.transaction.amount_paid
+            ))
+            # session.add(case_db)
+            return db_prisoner_list, session
+    else:
+        return db_prisoner_list, session
 
 
 if __name__ == '__main__':

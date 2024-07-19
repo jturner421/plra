@@ -66,7 +66,6 @@ class CCAMSession:
         self.session.close()
 
 
-
 def get_ccam_account_information(cases, **kwargs):
     """
     Retrieves JIFMS CCAM information for case via API call
@@ -94,7 +93,7 @@ def get_ccam_account_information(cases, **kwargs):
 
         # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next page
         # url so we need to rely on total pages embedded in the metadata
-        #todo: catch too many requests error
+        # todo: catch too many requests error
         if response['meta']['pageInfo']['totalPages'] > 1:
             for page in range(2, response['meta']['pageInfo']['totalPages'] + 1):
                 data = {"caseNumberList": cases, "page": page}
@@ -116,7 +115,7 @@ async def async_get_ccam_account_information(session, ccam_case_num: str, **kwar
     :return: list of dictionaries of account balances for requested case
     """
     data = {"caseNumberList": ccam_case_num}
-    print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
+    # print(Fore.CYAN + f'Getting case balances from CCAM for {kwargs["name"]} - {kwargs["ecf_case_num"]}')
     ccam_data = await session.get_CCAM_balances_async(data, ccam_case_num)
     return ccam_data
 
@@ -146,5 +145,4 @@ def sum_account_balances(payments: list[dict]) -> tuple[pd.DataFrame, str]:
     accounts.reset_index(drop=True, inplace=True)
     accounts.set_index(['case_num'], inplace=True)
     balances = balances.join(accounts.acct_cd, how='left')
-
-    return balances, party_code.prty_cd.values[0]
+    return balances

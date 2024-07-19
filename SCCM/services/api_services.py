@@ -43,7 +43,7 @@ class AsyncHttpClient:
         self.session = None
 
     @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=4, on_backoff=backoff_hdlr)
-    async def get_CCAM_balances_async(self, data, ccam_case_num) -> int:
+    async def get_CCAM_balances_async(self, case_list):
         timeout = aiohttp.ClientTimeout(total=5 * 60)
         headers = {'Content-Type': 'application/json'}
         rest = '/ccam/v1/Accounts'
@@ -52,20 +52,19 @@ class AsyncHttpClient:
                 rest,
                 timeout=timeout,
                 headers=headers,
-                params=data,
+                params=case_list,
                 ssl=ssl_context) as response:
             # response.raise_for_status()
             res = await response.read()
             ccam_data = json.loads(res)['data']
 
-            # API pagination set at 20. This snippet retrieves the rest of the records.  Note: API does not return next
-            # page url so we need to rely on total pages embedded in the metadata
-        for page in range(2, json.loads(res)['meta']['pageInfo']['totalPages'] + 1):
-            data = {"caseNumberList": ccam_case_num, "page": page}
-            async with self.session.get(rest, timeout=timeout, headers=headers, params=data,
+        while json.loads(res)['meta']['pageInfo']['last'] is False:
+            case_list["page"] = json.loads(res)['meta']['pageInfo']['number'] + 1
+            async with self.session.get(rest, timeout=timeout, headers=headers, params=case_list,
                                         ssl=ssl_context) as response:
                 response.raise_for_status()
-                ccam_data.extend(await response["data"])
+                res = await response.read()
+                ccam_data.extend(json.loads(res)['data'])
         return ccam_data
 
     def __call__(self) -> aiohttp.ClientSession:

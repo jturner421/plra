@@ -48,11 +48,14 @@ class AsyncHttpClient:
         headers = {'Content-Type': 'application/json'}
         rest = '/ccam/v1/Accounts'
         ssl_context = ssl.create_default_context(cafile=settings.cert_file)
-        async with self.session.get(
+        case_list["page"] = 1
+        case_list["size"] = 200
+        print(Fore.BLUE + f'Retrieving Page {case_list["page"]} of CCAM Balances \n')
+        async with self.session.post(
                 rest,
                 timeout=timeout,
                 headers=headers,
-                params=case_list,
+                json=case_list,
                 ssl=ssl_context) as response:
             # response.raise_for_status()
             res = await response.read()
@@ -60,7 +63,8 @@ class AsyncHttpClient:
 
         while json.loads(res)['meta']['pageInfo']['last'] is False:
             case_list["page"] = json.loads(res)['meta']['pageInfo']['number'] + 1
-            async with self.session.get(rest, timeout=timeout, headers=headers, params=case_list,
+            print(Fore.BLUE + f'Retrieving Page {case_list["page"]} of CCAM Balances \n')
+            async with self.session.post(rest, timeout=timeout, headers=headers, json=case_list,
                                         ssl=ssl_context) as response:
                 response.raise_for_status()
                 res = await response.read()

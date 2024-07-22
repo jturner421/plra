@@ -134,6 +134,12 @@ def sum_account_balances(payments: list[dict]) -> tuple[pd.DataFrame, str]:
 
     # get party code
     party_code = df.drop_duplicates('prty_cd')
+    if party_code.shape[0] == 1:
+        party_code = party_code.loc[0, 'prty_cd']
+    elif party_code.shape[0] > 1:
+        pass
+    else:
+        party_code is None
 
     # get account sums grouped by case number
     balances = df.groupby(df.case_num).sum(['prnc_owed', 'prnc_clld', 'totl_ostg'])
@@ -145,4 +151,4 @@ def sum_account_balances(payments: list[dict]) -> tuple[pd.DataFrame, str]:
     accounts.reset_index(drop=True, inplace=True)
     accounts.set_index(['case_num'], inplace=True)
     balances = balances.join(accounts.acct_cd, how='left')
-    return balances
+    return balances, party_code

@@ -113,7 +113,7 @@ async def main():
     await session.start()
     results = await session.get_CCAM_balances_async({'caseNumberList': cases_for_reconciliation})
     await session.stop()
-    ccam_data = sum_account_balances(results)
+    ccam_data, party_codes = sum_account_balances(results)
 
     for case in cases_for_reconciliation:
         try:

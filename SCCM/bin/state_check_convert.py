@@ -195,7 +195,7 @@ def main():
                     for case in cases_to_skip:
                         if case in p.cases_list:
                             p.cases_list.remove(case)
-                if party_code:
+                if not p.vendor_code:
                     p.vendor_code = party_code
 
             # Process Payments and identify overpayments

@@ -244,7 +244,7 @@ def main():
                 session.rollback()
                 raise
 
-        # except:
+        # xcept:
         #     session.rollback()
         #     raise
         # else:

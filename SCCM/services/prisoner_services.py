@@ -12,7 +12,7 @@ suffix_list = dc.populate_suffix_list()
 
 
 def add_prisoner_to_db_session(network_base_dir: str, p: pris_schema.PrisonerCreate):
-    print(f'{p.legal_name} not found in database. Adding to session.... ')
+    print(f'{p.legal_name} found in database. Adding to session.... ')
     # Get parameters, create new user, insert into DB and load balances
     # search for name on network share
     p.legal_name = drop_suffix_from_name(p.legal_name)
